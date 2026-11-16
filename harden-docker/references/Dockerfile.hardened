@@ -1,0 +1,132 @@
+# syntax=docker/dockerfile:1
+# Dockerfile.hardened — minimal, non-root, reproducible images (harden-docker)
+# Pin the frontend too in CI: # syntax=docker/dockerfile:1@sha256:<digest>
+#
+# Preference order for the runtime stage:
+#   (A) FROM scratch + one static binary      — nothing but your code, CA bundle, passwd/group
+#   (B) FROM scratch + binary + exact libs     — for dynamically linked programs
+#   (C) distroless / Docker Hardened Images / chiselled Ubuntu — when (A)/(B) are impractical
+#       (interpreted languages, heavy dlopen() users); see the Python example
+# No shell, package manager, coreutils, curl or setuid binaries in the final image means:
+# nothing for an attacker to live off, no CVE noise from unused packages, and images of a few MB.
+#
+# Build with provenance + SBOM attestations (harden-supply-chain):
+#   docker buildx build --provenance=mode=max --sbom=true --target runtime-scratch -t ghcr.io/org/app:1.2.3 --push .
+# Lint/check: docker build --check .   (BuildKit build checks)   and/or hadolint Dockerfile
+# NOTE: Dockerfile has no trailing comments — a "# ..." after an instruction becomes arguments.
+
+############################ (A) Static binary → FROM scratch (Go, Rust *-musl, static C)
+FROM golang:1-alpine@sha256:<digest> AS build
+# Scan this stage into the SBOM too: the scratch image alone has no package database.
+ARG BUILDKIT_SBOM_SCAN_STAGE=true
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /src
+# Dependency layer first (cache-friendly); module checksums verified against go.sum / sum.golang.org.
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
+COPY . .
+# CGO_ENABLED=0: fully static, pure-Go DNS resolver, no libc at runtime.
+# -s -w strips DWARF/symbols while keeping .go.buildinfo so govulncheck/Trivy still see deps.
+# Build-time secrets are mounted, never COPY'd or ARG'd (ARG values are stored in image history).
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=secret,id=netrc,target=/root/.netrc,required=false \
+    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -buildid=" -o /out/app ./cmd/app
+# Minimal identity files: numeric USER works without them, but getpwuid()/os/user and some
+# libraries/log lines expect the user to resolve.
+RUN printf 'app:x:65532:65532:app:/nonexistent:/sbin/nologin\n' > /out/passwd \
+ && printf 'app:x:65532:\n' > /out/group
+
+FROM scratch AS runtime-scratch
+# TLS trust store (outbound HTTPS); drop if the binary embeds its roots or never dials out.
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# Time zones: only if the app calls time.LoadLocation (Go alternative: import _ "time/tzdata").
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /out/passwd /etc/passwd
+COPY --from=build /out/group /etc/group
+COPY --from=build /out/app /app
+USER 65532:65532
+EXPOSE 8080
+# No shell or curl here: the binary checks itself (implement an "app healthcheck" subcommand).
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD ["/app", "healthcheck"]
+ENTRYPOINT ["/app"]
+# Runtime: run with --read-only; scratch has no /tmp, so mount one if needed: --tmpfs /tmp
+
+############################ (B) Dynamically linked binary → FROM scratch with exactly its libraries
+# For C/C++/Rust-gnu programs or distro-packaged tools. When compiling your own C/C++ in this
+# builder stage, enable full production hardening (see harden-build):
+#   CFLAGS="-O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fPIE -fstack-protector-strong \
+#     -fstack-clash-protection -ftrivial-auto-var-init=zero -fcf-protection=full \
+#     -flto=thin -fvisibility=hidden -fsanitize=cfi -fsanitize-trap=cfi -fno-sanitize-recover=all"
+#   LDFLAGS="-pie -flto=thin -fvisibility=hidden -fsanitize=cfi -fsanitize-trap=cfi \
+#     -fno-sanitize-recover=all -Wl,-z,relro,-z,now,-z,noexecstack"
+# (Rust: overflow-checks=true, panic="abort", cargo auditable build --release.)
+# Verify the ELF in the builder stage with harden-build/scripts/check-elf.sh --strict /rootfs.
+# ldd lists link-time deps only: libraries loaded via dlopen() (NSS modules, OpenSSL providers,
+# gconv, libgcc_s for pthread_cancel, plugins) are NOT found this way — exercise every real code
+# path in a test, or prefer (C) distroless/cc or a chiselled image. This example packages curl.
+FROM debian:trixie-slim@sha256:<digest> AS collect
+ARG BUILDKIT_SBOM_SCAN_STAGE=true
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+# Copy each binary, its ELF interpreter and every linked library, preserving paths (-L follows
+# merged-/usr symlinks). Then add the minimal /etc files the program needs.
+RUN set -eu; mkdir -p /rootfs/etc /rootfs/tmp; chmod 1777 /rootfs/tmp; \
+    for bin in /usr/bin/curl; do \
+      cp -L --parents "$bin" /rootfs; \
+      ldd "$bin" | awk '$2 == "=>" && $3 ~ /^\// {print $3} $1 ~ /^\// {print $1}' \
+        | sort -u | xargs -r -I{} cp -L --parents {} /rootfs; \
+    done; \
+    cp -L --parents /etc/ssl/certs/ca-certificates.crt /rootfs; \
+    printf 'app:x:65532:65532:app:/nonexistent:/sbin/nologin\n' > /rootfs/etc/passwd; \
+    printf 'app:x:65532:\n' > /rootfs/etc/group; \
+    find /rootfs -type f -perm /6000 -exec chmod a-s {} +
+
+FROM scratch AS runtime-dynamic
+COPY --from=collect /rootfs/ /
+USER 65532:65532
+ENTRYPOINT ["/usr/bin/curl"]
+
+############################ (C) Interpreted runtime (Python; same ideas for Node/Ruby/Java)
+# scratch is impractical for interpreters (hundreds of stdlib files, dlopen()ed extensions).
+# Use the smallest maintained runtime base: distroless (python3/nodejs/java), Docker Hardened
+# Images, Chainguard, or a chiselled Ubuntu — or -slim as below when you need apt at build time.
+FROM python:3.13-slim-bookworm@sha256:<digest> AS pybuild
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+WORKDIR /app
+RUN python -m venv /venv
+COPY requirements.txt .
+# Hash-pinned lockfile; refuse sdists so no third-party setup.py runs at build time.
+RUN /venv/bin/pip install --require-hashes --only-binary=:all: -r requirements.txt
+COPY src/ ./src/
+
+FROM python:3.13-slim-bookworm@sha256:<digest> AS runtime-python
+# Pull the base layer's security fixes at build time (trade-off: less reproducible than relying
+# only on fresh base digests), then strip setuid/setgid bits: nothing in the app needs them.
+# Grouped so a failing apt-get still fails the build.
+RUN apt-get update \
+ && apt-get -y upgrade --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* \
+ && { find / -xdev -perm /6000 -type f -exec chmod a-s {} + 2>/dev/null || true; }
+RUN groupadd --system --gid 10001 app && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
+COPY --from=pybuild /venv /venv
+COPY --from=pybuild --chown=root:root /app/src /app/src
+ENV PATH=/venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+# Code owned by root and not writable by the runtime user: an RCE can't rewrite the app.
+USER 10001:10001
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=2).status==200 else 1)"]
+ENTRYPOINT ["python", "-m", "src.main"]
+
+# .dockerignore (keep next to the Dockerfile) — the build context leaks into layers otherwise:
+#   .git
+#   .env*
+#   secrets/
+#   *.pem
+#   *.key
+#   node_modules/
+#   __pycache__/
+#   Dockerfile*
+#   compose*.yml

@@ -1,0 +1,16 @@
+{
+  "ip": "127.0.0.1",
+  "icc": false,
+  "no-new-privileges": true,
+  "live-restore": true,
+  "userland-proxy": false,
+  "log-driver": "local",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+  },
+  "default-ulimits": {
+    "nofile": { "Name": "nofile", "Soft": 65536, "Hard": 65536 }
+  },
+  "ip6tables": true
+}

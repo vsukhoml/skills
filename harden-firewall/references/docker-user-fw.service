@@ -1,0 +1,23 @@
+# /etc/systemd/system/docker-user-fw.service — re-apply DOCKER-USER rules whenever Docker starts
+# Install:  install -m 0755 docker-user-fw.sh /usr/local/sbin/
+#           install -m 0644 docker-user-fw.service /etc/systemd/system/
+#           systemctl daemon-reload && systemctl enable --now docker-user-fw.service
+# Configure (no script edits):  systemctl edit docker-user-fw.service  →
+#   [Service]
+#   Environment=PUBLIC_TCP=80,443
+#   Environment=PUBLIC_UDP=443
+#   Environment="RESTRICTED_V4=5432:192.0.2.10/32"
+# (Set PUBLIC_UDP=443 only when the reverse proxy serves HTTP/3 QUIC.)
+[Unit]
+Description=Restrict Docker-published ports (DOCKER-USER chain)
+After=docker.service
+# Restarting/stopping docker restarts/stops this unit too, so rules are re-applied.
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker-user-fw.sh
+
+[Install]
+WantedBy=docker.service

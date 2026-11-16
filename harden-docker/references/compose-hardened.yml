@@ -1,0 +1,153 @@
+# compose-hardened.yml — reference stack: reverse proxy + app + PostgreSQL + Redis (harden-docker)
+#
+# Shape:  internet ─▶ proxy (publishes 80/443) ─▶ app ─▶ db, cache
+#   - Only the proxy publishes ports. DB and cache have NO `ports:` and sit on an
+#     `internal: true` network: unreachable from outside, and they cannot call out either.
+#   - Every service: digest-pinned image, non-root where possible, read-only rootfs,
+#     cap_drop ALL (+ the minimum back), no-new-privileges, pids/memory/cpu limits
+#     (in deploy.resources.limits: don't also set pids_limit), rotated logs.
+#   - Secrets come from files mounted at /run/secrets (not env vars: env leaks via
+#     `docker inspect`, /proc/<pid>/environ, crash dumps and child processes).
+#
+# Validate: docker compose -f compose-hardened.yml config -q
+# Runtime-tested (Docker 29.8, postgres:18-alpine, redis:8-alpine): db and cache start healthy
+# with these flags; rootfs read-only; default Redis user NOAUTH; app user NOPERM on CONFIG/
+# FLUSHALL/EVAL; app_rw denied CREATE and COPY TO PROGRAM; backend has no egress.
+# Replace every @sha256:<digest> with the real digest:
+#   docker buildx imagetools inspect postgres:18-alpine --format '{{json .Manifest.Digest}}'
+# and let Renovate/Dependabot bump digests via PRs (harden-supply-chain).
+
+name: myapp
+
+x-hardening: &hardening
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop: [ALL]
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: local
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  proxy:
+    <<: *hardening
+    image: caddy:2-alpine@sha256:<digest>
+    # Caddy needs to bind 80/443 inside the container: grant only that capability.
+    cap_add: [NET_BIND_SERVICE]
+    ports:
+      # Explicit host IPs: with daemon "ip": "127.0.0.1", unqualified ports would bind loopback only.
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:443:443/udp"
+      - "[::]:80:80"
+      - "[::]:443:443"
+      - "[::]:443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+      - /run/caddy:rw,noexec,nosuid,nodev,size=1m
+    networks: [edge]
+    deploy:
+      resources:
+        limits: { memory: 256m, cpus: "1.0", pids: 256 }
+
+  app:
+    <<: *hardening
+    image: ghcr.io/example/myapp@sha256:<digest>
+    # Numeric non-root UID:GID baked into the image (USER 10001:10001); repeated here as a guard.
+    user: "10001:10001"
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: app_rw
+      DATABASE_PASSWORD_FILE: /run/secrets/db_app_password
+      REDIS_URL: redis://cache:6379/0
+      REDIS_USERNAME: app
+      REDIS_PASSWORD_FILE: /run/secrets/redis_app_password
+    secrets: [db_app_password, redis_app_password]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    # edge: reachable by the proxy. backend: talks to db/cache. Egress to the internet
+    # (if the app needs it) goes through `edge`; remove `edge` egress via host firewall if not.
+    networks: [edge, backend]
+    depends_on:
+      db: { condition: service_healthy }
+      cache: { condition: service_started }
+    deploy:
+      resources:
+        limits: { memory: 512m, cpus: "1.5", pids: 256 }
+
+  db:
+    <<: *hardening
+    image: postgres:18-alpine@sha256:<digest>
+    # The official entrypoint starts as root, fixes ownership, then drops to `postgres`
+    # via su-exec/gosu: that needs exactly these capabilities back.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_superuser_password
+      POSTGRES_DB: app
+      # The image's initdb otherwise writes `trust` for the local socket and 127.0.0.1/::1:
+      # any process inside the container (or sharing its netns) becomes superuser without a
+      # password. Force SCRAM everywhere (applies on first init of an empty volume):
+      POSTGRES_INITDB_ARGS: "--auth-local=scram-sha-256 --auth-host=scram-sha-256"
+      # Never POSTGRES_HOST_AUTH_METHOD=trust. Its default (scram-sha-256) only covers the
+      # final `host all all all` line.
+    secrets: [db_superuser_password, db_app_password]
+    volumes:
+      - db_data:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /run/postgresql:rw,noexec,nosuid,nodev,size=1m
+    shm_size: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d app"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    # No `ports:`. Need psql from your laptop? ssh -L 5432:<db-container-ip>:5432 host,
+    # or temporarily publish to loopback: "127.0.0.1:5432:5432".
+    networks: [backend]
+    deploy:
+      resources:
+        limits: { memory: 1g, cpus: "2.0", pids: 256 }
+
+  cache:
+    <<: *hardening
+    image: redis:8-alpine@sha256:<digest>
+    # The official image compiles protected-mode OFF; this config turns it back on,
+    # disables the default user and enforces ACLs (see harden-services/references/redis.md).
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    cap_add: [SETGID, SETUID]
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+      - ./redis/users.acl:/usr/local/etc/redis/users.acl:ro
+      - cache_data:/data
+    networks: [backend]
+    deploy:
+      resources:
+        limits: { memory: 384m, cpus: "1.0", pids: 256 }
+
+networks:
+  edge: {}
+  backend:
+    # No route to the outside world and no published ports possible.
+    internal: true
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}
+  db_data: {}
+  cache_data: {}
+
+secrets:
+  # Files are created by the operator (chmod 600, outside VCS), e.g.:
+  #   install -m 600 /dev/null secrets/db_app_password && openssl rand -base64 32 | tr -d '\n' > secrets/db_app_password
+  db_superuser_password: { file: ./secrets/db_superuser_password }
+  db_app_password: { file: ./secrets/db_app_password }
+  redis_app_password: { file: ./secrets/redis_app_password }

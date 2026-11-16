@@ -1,0 +1,121 @@
+#!/usr/sbin/nft -f
+# /etc/nftables.d/10-host_fw.nft — host firewall, IPv4 + IPv6 in one inet table (harden-firewall)
+#
+# OWNS ONLY `table inet host_fw`. It never runs `flush ruleset`, which would also wipe the
+# tables Docker, libvirt, Tailscale, fail2ban or k3s maintain (they break until restarted).
+# The three lines below replace THIS table atomically in one transaction: create-if-missing,
+# delete, define. Either the whole new table loads or nothing changes.
+#
+#   Validate:  nft -c -f /etc/nftables.d/10-host_fw.nft
+#   Apply:     nft -f  /etc/nftables.d/10-host_fw.nft        (arm the rollback timer first!)
+#   Inspect:   nft list table inet host_fw    (counters show what is hit)
+#
+# Edit the sets and the "Public services" block; pick ONE admin-plane option.
+# Plain host (no Docker/libvirt/k8s/VPN routing): forward chain drops everything.
+# Stage edits OUTSIDE /etc/nftables.d and persist only after verification (SKILL.md §6).
+# Docker host: uncomment the Docker bridge delegation rules in `chain forward` (keeping `policy drop`) and add docker_guard.nft.
+
+table inet host_fw
+delete table inet host_fw
+
+table inet host_fw {
+
+	# ---------- Address sets (interval = CIDRs allowed). RFC 5737/3849 placeholders: REPLACE them.
+	set admin_v4 {
+		type ipv4_addr
+		flags interval
+		elements = { 192.0.2.0/24 }
+	}
+	set admin_v6 {
+		type ipv6_addr
+		flags interval
+		elements = { 2001:db8::/32 }
+	}
+
+	# ---------- Per-source rate limiting state (kernel-side; replaces fail2ban for SSH floods)
+	set ssh_meter_v4 {
+		type ipv4_addr
+		flags dynamic, timeout
+		timeout 10m
+		size 65536
+	}
+	set ssh_meter_v6 {
+		# keyed by /64: one IPv6 customer controls 2^64 addresses, so per-address limits are useless
+		type ipv6_addr
+		flags dynamic, timeout
+		timeout 10m
+		size 65536
+	}
+
+	chain input {
+		type filter hook input priority filter; policy drop;
+
+		iif "lo" accept
+		ct state vmap { established : accept, related : accept, invalid : drop }
+
+		# ICMPv6 is not optional: without neighbor discovery and packet-too-big, IPv6 silently breaks.
+		icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem } accept
+		icmpv6 type { nd-neighbor-solicit, nd-neighbor-advert, nd-router-advert } ip6 hoplimit 255 accept
+		# MLD (RFC 4890), link-local only: switches doing MLD snooping stop forwarding multicast
+		# (incl. neighbor discovery) to hosts that never answer queries.
+		ip6 saddr fe80::/10 icmpv6 type { mld-listener-query, mld-listener-report, mld-listener-done, mld2-listener-report } accept
+		icmpv6 type echo-request limit rate 10/second burst 20 packets accept
+		# ICMPv4: destination-unreachable carries "fragmentation needed" (path MTU discovery).
+		icmp type { destination-unreachable, time-exceeded, parameter-problem } accept
+		icmp type echo-request limit rate 10/second burst 20 packets accept
+		# DHCPv6 client replies, only if the provider uses DHCPv6 (DHCPv4 uses raw sockets, unaffected):
+		#ip6 saddr fe80::/10 udp sport 547 udp dport 546 accept
+
+		# ---------- Admin plane: choose ONE option, delete the others
+		# Option A (recommended): SSH only through WireGuard
+		#udp dport 51820 accept
+		#iifname "wg0" tcp dport 22 accept
+		# Option B: SSH only from allow-listed admin networks
+		ip saddr @admin_v4 tcp dport 22 accept
+		ip6 saddr @admin_v6 tcp dport 22 accept
+		# Option C: SSH from anywhere, at most 6 new connections/minute per source, then accept
+		#tcp dport 22 ct state new update @ssh_meter_v4 { ip saddr limit rate over 6/minute burst 6 packets } counter drop
+		#tcp dport 22 ct state new update @ssh_meter_v6 { ip6 saddr & ffff:ffff:ffff:ffff:: limit rate over 6/minute burst 6 packets } counter drop
+		#tcp dport 22 accept
+
+		# ---------- Public services (on a Docker host, published ports are NOT filtered here: see docker_guard.nft)
+		tcp dport { 80, 443 } accept
+		# HTTP/3 (QUIC), only if the reverse proxy serves it:
+		#udp dport 443 accept
+
+		# ---------- Containers -> host services (e.g. a DB bound to the docker0 address)
+		#iifname "docker0" tcp dport 5432 accept
+
+		# Rate-limited log of what is dropped, so log floods cannot fill the disk.
+		limit rate 10/minute burst 20 packets log prefix "host_fw in drop: " level info
+		counter
+	}
+
+	chain forward {
+		# Keep `policy drop` even on Docker hosts so non-Docker interfaces never route into each other.
+		# On a Docker host, uncomment the three delegation rules below AND install 20-docker_guard.nft:
+		# an `accept` here only passes this base chain; `docker_guard.nft` (priority filter - 10)
+		# and Docker's own filter chains still isolate bridges and restrict published ports.
+		type filter hook forward priority filter; policy drop;
+
+		#ct state vmap { established : accept, related : accept, invalid : drop }
+		#iifname { "docker0", "br-*" } accept
+		#oifname { "docker0", "br-*" } accept
+	}
+
+	chain output {
+		type filter hook output priority filter; policy accept;
+		# Cloud metadata HTTP service (instance credentials + user-data): root only. cloud-init and
+		# provider agents run as root; an SSRF'd web app or a stray user process does not.
+		# Port 80 ONLY: on GCE and OCI 169.254.169.254 is also the DNS (and on GCE NTP) server used
+		# by non-root systemd-resolved/chrony; blocking all of it breaks name resolution and time.
+		# AWS EC2 Instance Connect fetches SSH keys from IMDS as user "ec2-instance-connect": if you
+		# use it, allow that user FIRST or this rule locks you out (the user must exist at load time):
+		#ip daddr 169.254.169.254 tcp dport 80 meta skuid "ec2-instance-connect" accept
+		ip daddr 169.254.169.254 tcp dport 80 meta skuid != 0 counter reject
+		ip6 daddr fd00:ec2::254 tcp dport 80 meta skuid != 0 counter reject
+		# Example per-user egress allow-list (blocks "curl miner | sh" after an RCE in the app user).
+		# A user NAME is resolved when the ruleset loads: the account must exist (or use the numeric UID).
+		#meta skuid "svc-myapp" ip daddr != { 127.0.0.0/8, 10.0.0.0/24 } tcp dport != 443 counter reject
+	}
+}

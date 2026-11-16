@@ -1,0 +1,82 @@
+## /etc/audit/rules.d/50-harden.rules — focused, low-overhead auditd rules (harden-host)
+##
+## Philosophy: watch the handful of things attackers MUST touch to persist or escalate,
+## instead of logging every execve (which costs real CPU/disk on a small VPS and buries
+## the signal). Ship these logs off-host; local logs die with the box.
+## Load: augenrules --load   Check: auditctl -l ; ausearch -k <key> -i ; aureport --summary
+## Requires: auditd (+ audispd-plugins / audisp-remote, or journald forwarding, for shipping)
+
+-D
+## Continue loading remaining rules if one rule fails (e.g. an absent path or unsupported arch):
+-c
+-b 8192
+## On buffer overflow: 1 = printk (keep running). 2 = panic (only for strict compliance hosts).
+-f 1
+## Rate limit (messages/s); 0 = unlimited. Protects tiny hosts from audit storms.
+-r 200
+
+## --- Identity & authentication databases
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/group -p wa -k identity
+-w /etc/gshadow -p wa -k identity
+-w /etc/sudoers -p wa -k privilege
+-w /etc/sudoers.d/ -p wa -k privilege
+-w /etc/pam.d/ -p wa -k pam
+-w /etc/security/ -p wa -k pam
+
+## --- Remote access & keys
+-w /etc/ssh/sshd_config -p wa -k sshd
+-w /etc/ssh/sshd_config.d/ -p wa -k sshd
+-w /root/.ssh/ -p wa -k ssh-keys
+## (watch admin users' ~/.ssh too, one line per user, or use root-managed AuthorizedKeysFile — see harden-ssh)
+-w /etc/ssh/authorized_keys/ -p wa -k ssh-keys
+
+## --- Persistence points
+-w /etc/crontab -p wa -k cron
+-w /etc/cron.d/ -p wa -k cron
+-w /var/spool/cron/ -p wa -k cron
+-w /etc/systemd/system/ -p wa -k systemd
+-w /usr/local/lib/systemd/ -p wa -k systemd
+-w /etc/ld.so.preload -p wa -k preload
+-w /etc/ld.so.conf -p wa -k preload
+-w /etc/ld.so.conf.d/ -p wa -k preload
+-w /etc/rc.local -p wa -k rc
+-w /etc/profile.d/ -p wa -k profile
+
+## --- Container control plane (who talks to Docker = who is root)
+-w /usr/bin/docker -p x -k docker-cli
+-w /etc/docker/ -p wa -k docker
+## CIS Docker benchmark rule; records opens/attribute changes of the socket. For per-API-call
+## auditing, log at a filtering socket proxy instead (see harden-docker).
+-w /var/run/docker.sock -k docker-sock
+
+## --- Kernel modules & time (rootkits, log tampering)
+## (b32 twins matter on x86_64: 32-bit syscalls via int 0x80 bypass b64-only rules)
+-a always,exit -F arch=b64 -S init_module,finit_module,delete_module -k modules
+## [WORKLOAD: x86_64] Comment out on 64-bit-only aarch64 kernels
+-a always,exit -F arch=b32 -S init_module,finit_module,delete_module -k modules
+-a always,exit -F arch=b64 -S kexec_load,kexec_file_load -k kexec
+## [WORKLOAD: x86_64] Comment out on 64-bit-only aarch64 kernels
+-a always,exit -F arch=b32 -S kexec_load -k kexec
+## glibc >= 2.31 implements adjtimex() via clock_adjtime: watch both
+-a always,exit -F arch=b64 -S clock_settime,settimeofday,adjtimex,clock_adjtime -k time
+## [WORKLOAD: x86_64] Comment out on 64-bit-only aarch64 kernels
+-a always,exit -F arch=b32 -S clock_settime,settimeofday,adjtimex,clock_adjtime -k time
+-w /etc/localtime -p wa -k time
+
+## --- Privilege escalation: exec of setuid-root programs by non-root users (sudo, su, pkexec,
+## or an exploited SUID binary). Cheap: fires only on that transition. Commands run THROUGH
+## sudo execute with uid=euid=0 and are not matched here: sudo's own log/journal records those.
+-a always,exit -F arch=b64 -S execve -C uid!=euid -F euid=0 -k setuid-exec
+## [WORKLOAD: x86_64] Comment out on 64-bit-only aarch64 kernels
+-a always,exit -F arch=b32 -S execve -C uid!=euid -F euid=0 -k setuid-exec
+
+## --- Execution from world-writable locations (malware staging); directory watches are recursive
+-w /tmp -p x -k exec-tmp
+-w /var/tmp -p x -k exec-tmp
+-w /dev/shm -p x -k exec-tmp
+
+## Make the rule set immutable until reboot (attacker with root can't silently drop rules;
+## changes then require a reboot — enable once the rules are stable):
+#-e 2

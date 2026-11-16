@@ -1,0 +1,60 @@
+#!/usr/sbin/nft -f
+# /etc/nftables.d/20-docker_guard.nft — restrict Docker-PUBLISHED ports (harden-firewall)
+#
+# Works with BOTH Docker firewall backends because it lives in its own table:
+#   - iptables backend (default; Docker's rules run in iptables-nft tables at the same hook)
+#   - nftables backend ("firewall-backend": "nftables", Docker >= 29, experimental)
+# Why a separate table and not DOCKER-USER: with nftables there is no DOCKER-USER chain, and
+# rules you put inside Docker's own tables are overwritten (Docker docs: "Docker expects to have
+# full ownership of its tables").
+#
+# nftables semantics that make this work:
+#   * a DROP in any base chain is final for the packet (Docker's later "accept" cannot revive it);
+#   * an ACCEPT only ends THIS chain; the packet still traverses Docker's chains.
+#   => this chain can only further RESTRICT what Docker would allow. That is exactly what we want.
+#   (To ALLOW something Docker itself drops, you would need Docker's --bridge-accept-fwmark.)
+# At the forward hook, DNAT has already happened: `tcp dport` sees the CONTAINER port.
+# Match the port the client actually connected to with `ct original proto-dst`.
+#
+# FAIL-CLOSED by design: it does not depend on knowing the external interface name (eth0 vs
+# ens3 vs enp1s0). Traffic FROM container bridges is left to Docker; traffic TOWARD container
+# bridges from anywhere else (internet, VPN peers, private networks) must be allowed explicitly.
+
+table inet docker_guard
+delete table inet docker_guard
+
+table inet docker_guard {
+	set db_clients_v4 {
+		type ipv4_addr
+		flags interval
+		elements = { 192.0.2.10 }
+	}
+
+	chain forward {
+		# Before Docker's filter chains (priority filter = 0). Policy accept: we only add drops.
+		type filter hook forward priority filter - 10; policy accept;
+
+		# Containers must never reach the cloud metadata HTTP service (SSRF -> instance credentials).
+		# Port 80 only: on GCE/OCI 169.254.169.254 also serves DNS (and NTP on GCE), which
+		# containers resolving via the host's upstream servers still need.
+		ip daddr 169.254.169.254 tcp dport 80 counter drop
+		ip6 daddr fd00:ec2::254 tcp dport 80 counter drop
+
+		ct state established,related accept
+		# Container egress and container-to-container traffic: Docker's own rules decide.
+		iifname "docker0" accept
+		iifname "br-*" accept
+		# Trusted ingress interfaces that may reach published ports (e.g. the admin VPN):
+		#iifname "wg0" accept
+
+		# Public published ports, by the port the client connected to (pre-DNAT host port):
+		meta l4proto tcp ct original proto-dst { 80, 443 } accept
+		#meta l4proto udp ct original proto-dst 443 accept
+		# A published DB port only for a known client (better: don't publish DBs at all):
+		#meta l4proto tcp ct original proto-dst 5432 ip saddr @db_clients_v4 accept
+
+		# Everything else toward Docker bridges: drop (IPv4 and IPv6, any ingress interface).
+		oifname "docker0" counter drop
+		oifname "br-*" counter drop
+	}
+}
