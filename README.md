@@ -24,7 +24,7 @@ flowchart LR
 
 ---
 
-## Skill Catalog (47 Skills)
+## Skill Catalog (46 Skills)
 
 ### 1. Pre-Code Engineering Synthesis (`specs` Suite — 11 Skills)
 
@@ -100,7 +100,7 @@ flowchart LR
 | [harden-build](harden-build/SKILL.md) | Production ELF mitigations (`PIE`, Full `RELRO`, `FORTIFY=3`, `CET`/`PAC+BTI`, LTO `CFI`), `scripts/check-elf.sh`, fuzzing, MC/DC, mutation, and formal proofs. |
 | [web-hardening](web-hardening/SKILL.md) | Centralized HTTP security headers, session-bound CSRF with explicit exemption tables, hash-allowlisted CSP + Trusted Types, XSSI, and BREACH scoping. |
 
-### 7. Technical Writing & Domain Reference Tools (3 Skills)
+### 7. Technical Writing & Domain Reference Tools (2 Skills)
 
 | Skill | Role & Scope |
 | --- | --- |
@@ -111,6 +111,7 @@ flowchart LR
 
 ## Installation
 
+I don't want to maintain it as plugins, so installation is manual.
 Symlink the repository (or individual `<skill-dir>/` folders) into your agent harness's skills directory:
 
 ```bash
