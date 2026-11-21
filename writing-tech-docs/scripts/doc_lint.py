@@ -12,6 +12,9 @@ Options:
                             and operator documentation.
   --link-root DIR           Directory that relative links start from. Give it
                             if the checked file is a copy in another directory.
+  --allow-restructure       With --compare, allow intentional heading and
+                            section-order changes while checking code blocks,
+                            identifiers, links, and numbers.
   --strict                  Count open items as findings for the exit status.
 
 Exit status: 0 for no findings, 1 for findings, 2 for a file that cannot be
@@ -22,8 +25,8 @@ The script measures only what a program can measure: lengths, counts,
 preserved tokens, and known words. A clean result does not prove that a
 document is clear. The script has checks for these rules: R1, R2, R3, R4, R8,
 R9, R10, R11 (image alternative text only; diagram topology and relation rules
-are manual), R12 to R20, R22 (repeated IDs only), and R25 to R32. It has no
-check for R5, R6, R7, R21, R23, and R24.
+are manual), R12 to R20, R24 (loaded comparison words only; category bias is
+manual), and R25 to R32. It has no check for R5, R6, R7, R21, R22, and R23.
 
 The script does not check words in code blocks, in inline code, or in double
 quotes. For code blocks, it checks the lead-in sentence, line count, language
@@ -32,7 +35,8 @@ each open item of the form "[Open: question]" and does not check the text of the
 question. A status in parentheses, for example "(measured, release 4.1)", does
 not count toward the length of a sentence. The profile "docs" does not require
 a table caption, accepts a table directly below a heading, raises the cell limit
-to 30 words, and has no limit for code names in a sentence. To skip a region, put it between the HTML comments
+to 30 words, and has no limit for code names in a sentence. To skip a region,
+put it between the HTML comments
 "<!-- doc-lint: off -->" and "<!-- doc-lint: on -->".
 """
 
@@ -57,9 +61,10 @@ MAX_CODE_WIDTH = 80
 MAX_HEADING_LEVEL = 3
 MAX_BOLD_SHARE = 0.10
 MAX_BOLD_WORDS = 6
+MAX_LEAD_IN_WORDS = 8
+MIN_BODY_TO_HEADING_RATIO = 3
 MAX_CODE_NAMES = 2
 MAX_PASSIVE_SHARE = 0.20
-MAX_ID_USES = 2
 MIN_PASSIVE_SENTENCES = 5
 WORDS_ON_A_PAGE = 400
 
@@ -141,6 +146,18 @@ WORDS = (
         'R4',
         'in conclusion|to conclude|to summarize|in summary',
         'do not repeat the summary at the end, state the next action or stop',
+    ),
+    # R24: exaggerated pros or cons in option comparisons.
+    (
+        'R24',
+        (
+            'prohibitive|prohibitively|untenable|unacceptable|superior|inferior'
+            '|compelling|attractive|ideal|flawed'
+        ),
+        (
+            'state the factual trade-off or quantity without exaggerating pros'
+            ' or cons'
+        ),
     ),
     # R25: uncommon words.
     (
@@ -269,8 +286,11 @@ WORDS = (
     ('R28', 'could', 'write "can" (ability) or "might" (possibility)'),
     (
         'R28',
-        'we recommend|we suggest|we advise|we would recommend|it is recommended'
-        '|it is advisable|it is better to|best practice|best practices',
+        (
+            'we recommend|we suggest|we advise|we would recommend|it is'
+            ' recommended|it is advisable|it is better to|best practice|best'
+            ' practices'
+        ),
         'state the action with the criterion or the fact that decides it',
     ),
     ('R28', 'would', 'state the condition: "If X occurs, Y occurs."'),
@@ -315,18 +335,27 @@ WORDS = (
     # R29: comments about the document instead of the system.
     (
         'R29',
-        'in this document|this document describes|let us explore|let us examine|let us unpack',
+        (
+            'in this document|this document describes|let us explore|let us'
+            ' examine|let us unpack'
+        ),
         'delete comments about the document and state the content',
     ),
     # R30: synthetic stagecraft, puffery, and self-labeling commentary.
     (
         'R30',
-        'here is the thing|let us be clear|make no mistake|at its core|the reality is|the truth is|when it comes to',
+        (
+            'here is the thing|let us be clear|make no mistake|at its core|the'
+            ' reality is|the truth is|when it comes to'
+        ),
         'delete the setup and state the claim',
     ),
     (
         'R30',
-        'to be honest|to be transparent|in full disclosure|worth noting|worth mentioning',
+        (
+            'to be honest|to be transparent|in full disclosure|worth'
+            ' noting|worth mentioning'
+        ),
         'delete the announcement and state the fact',
     ),
     (
@@ -346,7 +375,9 @@ WORDS = (
     ),
     (
         'R30',
-        'tapestry|beacon|realm|paradigm|synergy|synergies|cornerstone|testament to',
+        (
+            'tapestry|beacon|realm|paradigm|synergy|synergies|cornerstone|testament to'
+        ),
         'use a literal technical noun',
     ),
     (
@@ -357,7 +388,10 @@ WORDS = (
     # R31: anonymous authority without a primary source.
     (
         'R31',
-        'experts agree|experts believe|studies show|research suggests|widely regarded|industry leaders',
+        (
+            'experts agree|experts believe|studies show|research'
+            ' suggests|widely regarded|industry leaders'
+        ),
         'name the primary source, or delete the claim',
     ),
     # R32: inflated copulas and moral adjectives on technical nouns.
@@ -368,17 +402,40 @@ WORDS = (
     ),
     (
         'R32',
-        'honest metric|honest shape|honest number|honest signal|truthful metric',
+        (
+            'honest metric|honest shape|honest number|honest signal|truthful'
+            ' metric'
+        ),
         'state the exact technical property',
     ),
 )
 
 # Checks that use a pattern and not the word list. Printed by --words.
 PATTERN_NOTES = (
-    ('R8', '[Open: question]', 'resolve the open item before review'),
+    (
+        'R1',
+        (
+            'leaf heading >= 1/3 of section words, or sibling sections mostly'
+            ' 1-2 sentences'
+        ),
+        'use a list or merge short sections into their parent',
+    ),
+    (
+        'R8',
+        '[Open: question]',
+        'answer the open item or move it to an open-questions section',
+    ),
+    (
+        'R10',
+        'table of (optional ID, item name, prose explanation)',
+        'replace with a bold/underlined list or paragraph-length sections',
+    ),
     (
         'R11',
-        'image without alternative text (diagram topology/relation rules are manual)',
+        (
+            'image without alternative text (diagram topology/relation rules'
+            ' are manual)'
+        ),
         'add alternative text and explain image labels in body text',
     ),
     (
@@ -416,16 +473,15 @@ PATTERN_NOTES = (
         '2 or more slashes between words in a table cell',
         'write "and" or "or", or move the detail to the page of the item',
     ),
-    ('R14', 'passive verb with its actor after "by"', 'make the actor the subject'),
+    (
+        'R14',
+        'passive verb with its actor after "by"',
+        'make the actor the subject',
+    ),
     (
         'R14',
         f'more than {round(100 * MAX_PASSIVE_SHARE)}% of the sentences passive',
         'name the actor and use the active voice',
-    ),
-    (
-        'R22',
-        f'requirement ID more than {MAX_ID_USES} times',
-        'write the plain name of the claim in the text',
     ),
     ('R27', 'This/That/These/Those + verb', 'put a noun after the pronoun'),
     ('R27', '3 or more "it" in one sentence', 'repeat the nouns'),
@@ -487,7 +543,13 @@ _CAPTION_BLOCK = re.compile(
 _CAPTION_LABEL = re.compile(
     r'^\s*[*_]+\s*(?:table|figure)\b', re.IGNORECASE
 )
-_LEAD_IN = re.compile(r'^\s*\*\*[^*\n]{1,80}:\*\*\s*')
+_LEAD_IN = re.compile(
+    r'^\s*(?:\*\*[^*\n]{1,100}:?\*\*|<u>[^<\n]{1,100}:?</u>):?\s*'
+)
+_ID_HEADER = re.compile(
+    r'^(?:#|no\.?|num(?:ber)?|id|index|item|idx|step|ref)$', re.IGNORECASE
+)
+_ID_CELL = re.compile(r'^(?:#?\d+[.)]?|[A-Za-z]{1,6}[-_.]?\d+[A-Za-z]?)$')
 _ALERT_TAG = re.compile(r'^\s*\[!\w+\]')
 _CALLOUT = re.compile(
     r'^\s*(?:\[!\w+\]|\*{0,2}(?:Note|Warning|Caution|Important|Tip)\s*:)',
@@ -570,8 +632,8 @@ _AI_UTM_PARAM = re.compile(
     re.IGNORECASE,
 )
 _STRUCTURAL_NUM = re.compile(
-    r'\b(?:(?:Table|Figure|Section|Step)\s+\d+|'
-    r'(?:SPEC|DESIGN|ADR|PLAN|REQ|INV|ASM)-\d+[A-Za-z]?)\b',
+    r'\b(?:(?:Table|Figure|Section|Step|Option)\s+\d+|'
+    r'(?:SPEC|DESIGN|ADR|PLAN|REQ|INV|ASM|DEC|OPT|OQ|ITEM)-\d+[A-Za-z]?)\b',
     re.IGNORECASE,
 )
 _NUMBER_TOKEN = re.compile(
@@ -654,13 +716,14 @@ _BY_ACTOR = re.compile(
     r'^[^.;:]{0,60}?\bby\s+(?:the|a|an|each|this|that|these|our|its|CODE|'
     r'[A-Z]\w+)\b'
 )
-_CLAIM_ID = re.compile(r'\b(?:REQ|INV|ASM)-\d+[A-Za-z]?\b')
 _AMPERSAND = re.compile(r'(?<=[\w)])\s+&\s+(?=[\w(])')
 _PLUS_WORD = re.compile(r'(?<=[A-Za-z)])\s+\+\s+(?=[A-Za-z(])')
 _VERSUS = re.compile(r'(?<![\w-])vs\.?(?![\w-])', re.IGNORECASE)
 _WITH_SLASH = re.compile(r'(?<![\w/])w/(?=\s|\w)', re.IGNORECASE)
 # A slash between two words hides "and" or "or". Standard pairs stay.
-_SLASH_PAIR = re.compile(r'(?<![\w/.:-])[A-Za-z][\w-]*(?:/[A-Za-z][\w-]*)+(?![\w/])')
+_SLASH_PAIR = re.compile(
+    r'(?<![\w/.:-])[A-Za-z][\w-]*(?:/[A-Za-z][\w-]*)+(?![\w/])'
+)
 _SLASH_OK = frozenset((
     'i/o', 'tcp/ip', 'ci/cd', 'a/b', 'and/or', 'client/server', 'read/write',
     'input/output', 'n/a', 'os/2', 'gnu/linux', 'pl/sql', 'request/response',
@@ -1054,7 +1117,6 @@ class _Linter:
     # (line, is_title_case, is_strong) for each heading of 2 or more words.
     self._heading_cases: list[tuple[int, bool, bool]] = []
     self._sentences = 0
-    self._claim_ids: dict[str, list[int]] = {}
     self._passive_lines: list[int] = []
 
   def _check_links_and_images(self, masked: str, first_line: int) -> None:
@@ -1090,7 +1152,11 @@ class _Linter:
       if not target_file.exists():
         self._add(line_no, 'R19', f'broken local link "{raw_target}"')
         continue
-      if fragment and target_file.is_file() and target_file.suffix.lower() == '.md':
+      if (
+          fragment
+          and target_file.is_file()
+          and target_file.suffix.lower() == '.md'
+      ):
         anchors = self._anchor_cache.get(target_file)
         if anchors is None:
           try:
@@ -1122,7 +1188,7 @@ class _Linter:
             _line_of(raw, match.start(), first_line),
             'OPEN',
             f'open item "{_excerpt(match.group(1))}": the author answers it '
-            'before review',
+            'or moves it to an open-questions section',
         )
       return _same_lines(' OPEN ', match.group(0))
 
@@ -1206,10 +1272,6 @@ class _Linter:
             rule,
             f'{label} in "{context}": {advice}',
         )
-    for match in _CLAIM_ID.finditer(text):
-      self._claim_ids.setdefault(match.group(0), []).append(
-          _line_of(text, match.start(), first_line)
-      )
     for match in _CAPITAL_WORD.finditer(text):
       if match.group(0) in SHOUT_WORDS:
         self._add(
@@ -1222,14 +1284,20 @@ class _Linter:
     """Checks one paragraph, list item, or callout block."""
     raw = self._take_open_items('\n'.join(block.lines), block.line)
     masked = _mask_literals(raw)
+    lead_in_span = _LEAD_IN.match(raw) if block.kind == 'item' else None
     for match in _BOLD.finditer(masked):
       cleaned_bold = _clean_inline(match.group(1))
       self._bold_characters += len(cleaned_bold)
-      if _count_words(cleaned_bold) > MAX_BOLD_WORDS:
+      bold_limit = (
+          MAX_LEAD_IN_WORDS
+          if lead_in_span and match.start() < lead_in_span.end()
+          else MAX_BOLD_WORDS
+      )
+      if _count_words(cleaned_bold) > bold_limit:
         self._add(
             _line_of(masked, match.start(), block.line),
             'R18',
-            f'bold text of more than {MAX_BOLD_WORDS} words: '
+            f'bold text of more than {bold_limit} words: '
             f'"{_excerpt(match.group(1))}"',
         )
     if _HERE_LINK.search(masked):
@@ -1337,7 +1405,9 @@ class _Linter:
         or previous.kind in ('heading', 'table', 'code')
         or _is_block_caption(previous, before_previous)
     ) and not (self._docs and below_heading):
-      self._add(block.line, 'R12', 'table without an introductory sentence above')
+      self._add(
+          block.line, 'R12', 'table without an introductory sentence above'
+      )
     sanitized_lines: list[str] = []
     for offset, line in enumerate(block.lines):
       number = block.line + offset + (1 if offset else 0)
@@ -1350,6 +1420,7 @@ class _Linter:
           'R10',
           f'table of {columns} columns (limit {MAX_TABLE_COLUMNS})',
       )
+    self._check_key_description_table(block.line, rows, columns)
     for row_line, cells in rows:
       for cell in cells:
         masked_cell = _mask_literals(cell)
@@ -1403,6 +1474,101 @@ class _Linter:
     )
     if not has_caption and not self._docs:
       self._add(block.line, 'R12', 'table without a caption in italics below')
+
+  def _check_key_description_table(
+      self,
+      table_line: int,
+      rows: list[tuple[int, list[str]]],
+      columns: int,
+  ) -> None:
+    """Flags 2- or 3-column (optional ID, name/link, prose explanation) tables."""
+    if columns not in (2, 3) or len(rows) < 3:
+      return
+    data_rows = [cells for _, cells in rows[1:] if len(cells) == columns]
+    if len(data_rows) < 2:
+      return
+    if columns == 3:
+      header_id = _clean_inline(rows[0][1][0]).strip()
+      col0_cells = [_clean_inline(c[0]).strip() for c in data_rows]
+      if any(_count_words(val) > 2 or len(val) > 12 for val in col0_cells):
+        return
+      if not (
+          _ID_HEADER.match(header_id)
+          or all(_ID_CELL.match(val) for val in col0_cells if val)
+      ):
+        return
+    name_col = 0 if columns == 2 else 1
+    if any(_count_words(_clean_inline(c[name_col])) > 8 for c in data_rows):
+      return
+    long_rows = 0
+    for cells in data_rows:
+      cleaned_desc = _clean_inline(cells[-1])
+      words = _count_words(cleaned_desc)
+      sents = len(_sentences(cleaned_desc))
+      if words > MAX_CELL_WORDS or (sents >= 2 and words >= 12):
+        long_rows += 1
+    if long_rows * 2 >= len(data_rows):
+      self._add(
+          table_line,
+          'R10',
+          'table of (optional ID, item name, prose explanation): '
+          'use a list or short sections instead',
+      )
+
+  def _check_section_density(self, blocks: list[Block]) -> None:
+    """Checks leaf heading-to-body ratio and majority-short sibling sections."""
+    headings = [(idx, b) for idx, b in enumerate(blocks) if b.kind == 'heading']
+    parent_stack: list[tuple[int, int]] = []
+    sibling_groups: dict[tuple[int, int], list[tuple[int, bool]]] = {}
+    for i, (pos, hb) in enumerate(headings):
+      while parent_stack and parent_stack[-1][1] >= hb.size:
+        parent_stack.pop()
+      parent_pos = parent_stack[-1][0] if parent_stack else -1
+      parent_stack.append((pos, hb.size))
+      if hb.size < 2:
+        continue
+      next_pos = headings[i + 1][0] if i + 1 < len(headings) else len(blocks)
+      has_child = i + 1 < len(headings) and headings[i + 1][1].size > hb.size
+      if has_child:
+        continue
+      sec_blocks = blocks[pos + 1 : next_pos]
+      h_words = _count_words(_clean_inline(hb.lines[0]).strip())
+      c_words = sum(
+          _count_words(_clean_inline('\n'.join(b.lines))) for b in sec_blocks
+      )
+      if h_words > 0 and c_words < MIN_BODY_TO_HEADING_RATIO * h_words:
+        self._add(
+            hb.line,
+            'R1',
+            f'section heading ({h_words} words) is less than '
+            f'{MIN_BODY_TO_HEADING_RATIO} times shorter than its '
+            f'{c_words}-word body: use a list or merge into parent',
+        )
+      has_struct = any(
+          b.kind in ('table', 'code') or _IMAGE.search('\n'.join(b.lines))
+          for b in sec_blocks
+      )
+      list_items = sum(1 for b in sec_blocks if b.kind == 'item')
+      sents = sum(
+          len(_sentences(_clean_inline('\n'.join(b.lines))))
+          for b in sec_blocks
+          if b.kind in ('text', 'item')
+      )
+      is_brief = not has_struct and list_items < 3 and sents <= 2
+      sibling_groups.setdefault((parent_pos, hb.size), []).append(
+          (hb.line, is_brief)
+      )
+    for group in sibling_groups.values():
+      if len(group) < 3:
+        continue
+      brief_lines = [line for line, brief in group if brief]
+      if len(brief_lines) * 2 > len(group):
+        self._add(
+            brief_lines[0],
+            'R1',
+            f'{len(brief_lines)} of {len(group)} sibling sections have at most '
+            '2 sentences: use a list instead of short sections',
+        )
 
   def _check_code(
       self,
@@ -1535,7 +1701,9 @@ class _Linter:
       self._add(block.line, 'R20', 'heading in capital letters')
     if _HEADING_SYMBOL.search(bare_title):
       self._add(
-          block.line, 'R17', 'dash or "&" in a heading: write a short topic label'
+          block.line,
+          'R17',
+          'dash or "&" in a heading: write a short topic label',
       )
     later = [w.strip('()[],.:') for w in alpha_words[1:] if w != 'CODE']
     # An acronym or a name such as "GitHub" does not show the case style.
@@ -1614,16 +1782,7 @@ class _Linter:
         self._check_prose(block)
     self._close_lists()
     self._close_section()
-    # One short heading can end with a proper noun. A document in which most
-    # headings have this form uses title case.
-    for claim_id, lines in sorted(self._claim_ids.items()):
-      if len(lines) > MAX_ID_USES:
-        self._add(
-            lines[MAX_ID_USES],
-            'R22',
-            f'"{claim_id}" occurs {len(lines)} times: write the ID at the '
-            'definition, and the plain name of the claim in the text',
-        )
+    self._check_section_density(blocks)
     passive = len(self._passive_lines)
     if (
         passive >= MIN_PASSIVE_SENTENCES
@@ -1775,43 +1934,47 @@ def _extract_numbers(prose_no_inline_code: str) -> collections.Counter[str]:
   return counts
 
 
-def compare_documents(original: str, revised: str) -> list[Finding]:
+def compare_documents(
+    original: str, revised: str, allow_restructure: bool = False
+) -> list[Finding]:
   """Checks Revise-mode preservation limits between original and revised."""
   orig_blocks = parse_blocks(original.splitlines())
   rev_blocks = parse_blocks(revised.splitlines())
   findings: list[Finding] = []
 
-  orig_headings = [
-      (
-          b.size,
-          _clean_inline(b.lines[0]).strip().rstrip(':').strip().lower(),
-          b.lines[0].strip(),
-      )
-      for b in orig_blocks
-      if b.kind == 'heading'
-  ]
-  rev_headings = [
-      (b.size, _clean_inline(b.lines[0]).strip().rstrip(':').strip().lower())
-      for b in rev_blocks
-      if b.kind == 'heading'
-  ]
-  cursor = 0
-  for level, norm_title, raw_title in orig_headings:
-    matched = False
-    while cursor < len(rev_headings):
-      rev_level, rev_title = rev_headings[cursor]
-      cursor += 1
-      if rev_level == level and rev_title == norm_title:
-        matched = True
-        break
-    if not matched:
-      findings.append(
-          Finding(
-              1,
-              'L-HEAD',
-              f'original heading "{raw_title}" removed or reordered',
-          )
-      )
+  if not allow_restructure:
+    orig_headings = [
+        (
+            b.size,
+            _clean_inline(b.lines[0]).strip().rstrip(':').strip().lower(),
+            b.lines[0].strip(),
+        )
+        for b in orig_blocks
+        if b.kind == 'heading'
+    ]
+    rev_headings = [
+        (b.size, _clean_inline(b.lines[0]).strip().rstrip(':').strip().lower())
+        for b in rev_blocks
+        if b.kind == 'heading'
+    ]
+    cursor = 0
+    for level, norm_title, raw_title in orig_headings:
+      matched = False
+      while cursor < len(rev_headings):
+        rev_level, rev_title = rev_headings[cursor]
+        cursor += 1
+        if rev_level == level and rev_title == norm_title:
+          matched = True
+          break
+      if not matched:
+        findings.append(
+            Finding(
+                1,
+                'L-HEAD',
+                f'original heading "{raw_title}" moved, renamed, or removed '
+                '(pass --allow-restructure if restructuring)',
+            )
+        )
 
   orig_codes, orig_prose = _split_code_and_prose(orig_blocks)
   rev_codes, rev_prose = _split_code_and_prose(rev_blocks)
@@ -1824,6 +1987,24 @@ def compare_documents(original: str, revised: str) -> list[Finding]:
             f'{len(rev_codes)}',
         )
     )
+  elif allow_restructure:
+    orig_norm = collections.Counter(
+        _normalize_code_block(b) for b in orig_codes
+    )
+    rev_norm = collections.Counter(_normalize_code_block(b) for b in rev_codes)
+    if orig_norm != rev_norm:
+      for rev_code in rev_codes:
+        norm = _normalize_code_block(rev_code)
+        if orig_norm[norm] > 0:
+          orig_norm[norm] -= 1
+        else:
+          findings.append(
+              Finding(
+                  rev_code.line,
+                  'L-CODE',
+                  'code block content changed in Revise mode',
+              )
+          )
   else:
     for orig_code, rev_code in zip(orig_codes, rev_codes):
       if _normalize_code_block(orig_code) != _normalize_code_block(rev_code):
@@ -1835,8 +2016,12 @@ def compare_documents(original: str, revised: str) -> list[Finding]:
             )
         )
 
-  orig_ids = {m.group(0).strip('`').strip() for m in _INLINE_CODE.finditer(orig_prose)}
-  rev_ids = {m.group(0).strip('`').strip() for m in _INLINE_CODE.finditer(rev_prose)}
+  orig_ids = {
+      m.group(0).strip('`').strip() for m in _INLINE_CODE.finditer(orig_prose)
+  }
+  rev_ids = {
+      m.group(0).strip('`').strip() for m in _INLINE_CODE.finditer(rev_prose)
+  }
   for missing_id in sorted(orig_ids - rev_ids):
     findings.append(
         Finding(
@@ -1909,7 +2094,9 @@ def _read_input(path: str) -> tuple[str, str]:
     return path, handle.read()
 
 
-def _report(label: str, findings: list[Finding], words: int, strict: bool) -> int:
+def _report(
+    label: str, findings: list[Finding], words: int, strict: bool
+) -> int:
   """Prints the findings and the summary line. Returns the exit status."""
   for finding in findings:
     print(f'{label}:{finding.line}: {finding.rule}: {finding.message}')
@@ -1954,6 +2141,14 @@ def main(argv: list[str] | None = None) -> int:
       ' of the checked file)',
   )
   parser.add_argument(
+      '--allow-restructure',
+      action='store_true',
+      help=(
+          'with --compare, allow intentional heading and section-order changes'
+          ' while still checking code blocks, identifiers, links, and numbers'
+      ),
+  )
+  parser.add_argument(
       '--strict',
       action='store_true',
       help='count open items as findings for the exit status',
@@ -1967,6 +2162,8 @@ def main(argv: list[str] | None = None) -> int:
   if args.words:
     _print_words()
     return 0
+  if args.allow_restructure and not args.compare:
+    parser.error('--allow-restructure requires --compare')
   if args.compare:
     if args.files:
       parser.error('do not combine positional files with --compare')
@@ -1979,7 +2176,9 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as error:
       print(f'cannot read input file: {error}', file=sys.stderr)
       return 2
-    pres_findings = compare_documents(orig_text, rev_text)
+    pres_findings = compare_documents(
+        orig_text, rev_text, allow_restructure=args.allow_restructure
+    )
     lint_findings, words = lint(
         rev_text, _link_base(rev_arg, args.link_root), args.profile
     )

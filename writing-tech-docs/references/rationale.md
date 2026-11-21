@@ -31,10 +31,12 @@ labels:
     implementation, appendix. Detail that helps a newcomer reduces the accuracy
     of an expert, because the expert must compare it with known facts. Source:
     Kalyuga and others 2003 (review of experiments).
--   **R4**, one home for each fact: Engineers stop trusting a document that is
-    out of date or that contradicts itself. A fact in two places changes in only
-    one place. Sources: Forward and Lethbridge 2002, Aghajani and others 2019
-    (field studies).
+-   **R4**, one home for each item (DRY): Engineers stop trusting a document
+    that is out of date or that contradicts itself. When a requirement,
+    decision, or option is defined in two places, edits update only one place.
+    Referencing the item by ID or short name and stating only local consequences
+    keeps one source of truth. Sources: Forward and Lethbridge 2002, Aghajani
+    and others 2019 (field studies).
 
 ## Selection of information
 
@@ -61,11 +63,12 @@ labels:
     about conditional rules with fewer errors from a table than from prose.
     Sources: Wright and Reid 1973 (experiment). Vessey 1991 (review) for exact
     values.
--   **R11**, diagrams for topology and flow: A diagram helps only if position in
-    the diagram matches the structure of the system. A diagram with mixed
-    meanings can mislead. Sources: Larkin and Simon 1987 (argument). Petre 1995
-    and Scanniello and others 2014 (experiments). Moody 2009 (argument) for one
-    meaning of each symbol.
+-   **R11**, diagrams from source code (`tech-docs-diagrams`, D1 to D10): A
+    diagram helps only if 2D position matches system structure within crossing
+    and memory limits. Redundant non-color cues keep semantic categories legible
+    under red-green colorblindness. Sources: Larkin and Simon 1987 (argument).
+    Purchase 2002 and Huang, Eades, and Hong 2009 (experiments). Okabe and Ito
+    2008 and Moody 2009 (guidelines and argument).
 -   **R12**, a frame for each block: A figure or a code block that is far from
     its text costs the reader working memory. A lead-in
     sentence and a caption give the role and the result to a reader who scans.
@@ -118,10 +121,11 @@ labels:
     notice the missing branches of a fault tree. Reviewers with specific fault
     scenarios found more faults. Sources: Fischhoff, Slovic, and Lichtenstein
     1978 (experiment). Porter, Votta, and Basili 1995 (experiment).
--   **R24**, a decision from a comparison: Architects rate the reasons for a
-    design as important, and they report barriers to recording them. Later
-    readers ask the same questions again. Sources: Tang and others 2006
-    (survey). Parnas and Clements 1986 (argument).
+-   **R24**, factual, unbiased comparisons: Architects rate the reasons and
+    trade-offs for a design as important, and they report barriers to recording
+    them. Selecting only criteria that favor a preferred option hides stronger
+    alternatives from reviewers. Sources: Tang and others 2006 (survey). Parnas
+    and Clements 1986 (argument). Nickerson 1998 (review of experiments).
 
 ## Plain English for international readers
 
@@ -158,9 +162,12 @@ a possibility, because R8 needs a word for a claim that is not verified.
 
 ## Reasons for the 4 principles
 
--   **Reader effort before word count:** Headings, captions, and repeated names
-    add words. They remove searches and re-reading. Sources: Chandler and
-    Sweller 1991, Cowan 2001.
+-   **Reader effort before writing or token cost:** Reader review and decision
+    time is almost always the tightest bottleneck in finalizing a document.
+    Spending 4 times the generation tokens to polish structure, content, and
+    style pays back across every reader. Headings, captions, and repeated names
+    add words and remove searches and re-reading. Sources: Chandler and Sweller
+    1991, Cowan 2001.
 -   **Layers before one average depth:** Explicit background helps readers with
     little knowledge and slows experts. One text at a middle depth serves
     neither group. Sources: McNamara and others 1996, Kalyuga and others 2003

@@ -52,6 +52,34 @@ Unlocked     | Internal bus | The device accepts the command.
 
 *Table 1: A locked device does not accept a command from USB.*
 
+## Key-description table
+
+This example applies the rules for tables, lists, and section size (R1, R9, and
+R10). The draft puts a short ID, an item title, and a 2-sentence explanation in
+a 3-column table.
+
+```text
+| ID | Component    | Role                                             |
+| -- | ------------ | ------------------------------------------------ |
+| C1 | Frame parser | Checks packet length and CRC. Drops bad frames.  |
+| C2 | Key cache    | Holds the session key in SRAM. Clears on reset.  |
+| C3 | Audit log    | Writes rejected codes to a 256-entry ring log.   |
+```
+
+Each explanation has only 2 sentences, so separate sections leave too little
+body text below each heading. A bulleted list highlights each ID and title in
+bold instead:
+
+-   **C1. Frame parser:** Checks the length and checksum of each incoming
+    packet. Drops any frame that fails a check and increments the error counter.
+-   **C2. Key cache:** Holds the active session key in SRAM. Clears the key slot
+    if the host closes the session or resets the bus.
+-   **C3. Audit log:** Appends each rejected command code to the flash ring
+    buffer. Keeps the latest 256 entries across power cycles.
+
+If most items need a full paragraph or more, turn each ID and title into a child
+heading instead.
+
 ## Sentences
 
 This example applies the rules for sentences (R13, R14, and R15) and for
@@ -86,7 +114,7 @@ The counter should never go backwards, even after crashes.
 After the rules, the requirement has a plain name, a mechanism, a test, and its
 coverage:
 
--   **Counter order:** The attempt counter does not decrease after a
+-   **INV-01. Counter order:** The attempt counter does not decrease after a
     restart or a power loss.
 -   **Enforcement:** The storage code writes the new counter value to flash
     before the command returns a result.
@@ -96,9 +124,36 @@ coverage:
     previous firmware. An upgrade has no effect, because the counter format does
     not change.
 
-The author supplied the mechanism, the test, and the coverage. Other sections
-refer to this invariant as "the counter order", without an ID. The next example
-shows the text if the author did not supply the facts.
+The author supplied the mechanism, the test, and the coverage, and named the
+invariant `INV-01. Counter order` under the document convention. The next
+example shows how another section refers to `INV-01` without repeating its
+definition.
+
+## DRY references
+
+This example applies the DRY rule for one home per item (R4). The rollback
+section repeats the full definition and enforcement of `INV-01` instead of
+pointing to it.
+
+```text
+## Rollback
+
+During a rollback to firmware 4.0, the attempt counter must never decrease
+after a restart or power loss, so the storage code writes the new counter
+value to flash before returning. Because of this flash write, firmware 4.0
+reads the latest counter value without a migration step.
+```
+
+After the rules, the rollback section refers to `INV-01 (Counter order)` without
+restating its definition, and states only the consequence for rollback:
+
+```markdown
+## Rollback
+
+Because `INV-01` (Counter order) persists every increment before the command
+returns, firmware 4.0 reads the latest counter value directly after a rollback
+without a migration step.
+```
 
 ## Missing facts
 
@@ -131,30 +186,34 @@ in the report.
 
 ## Alternatives
 
-This example applies the rule for a decision from a comparison (R24).
+This example applies the rule for factual, unbiased comparisons (R24). The draft
+exaggerates pros and cons and omits the cost categories that favor the other
+options.
 
 ```text
-Option A has pros and cons. Option B is also interesting and might be worth
-considering. We could also do nothing for now.
+Option A (page map in flash) is a clean, superior design that guarantees
+resilient updates. Option B (page map in RAM) is prohibitive under power
+loss, and doing nothing is unacceptable.
 ```
 
-After the rules, the text states 2 criteria, compares each option with them, and
-states the decision as the result. The author supplied each number.
+After the rules, Table 2 states all material categories as facts, including
+flash space and flash wear where Option B and "no change" win.
 
-The update must continue after a power loss (the criterion that decides), and
-the change must use at most 8 KiB of flash. Table 2 compares the 3 options with
-these criteria.
+The update must continue after a power loss (the deciding criterion), and the
+change must use at most 8 KiB of flash. Table 2 compares the 3 options across
+all 4 material criteria.
 
-Option               | After a power loss                  | Flash cost | Trade-off
--------------------- | ----------------------------------- | ---------- | ---------
-A: page map in flash | The update continues from the map.  | 4 KiB      | One more flash write for each page.
-B: page map in RAM   | The map is lost. The update fails.  | 0 KiB      | No flash wear.
-No change            | 3% of updates fail (measured).      | 0 KiB      | No engineering work.
+Option               | After a power loss                 | Flash space | Extra flash writes     | Work
+-------------------- | ---------------------------------- | ----------- | ---------------------- | ----
+A: page map in flash | Continues update from the map.     | 4 KiB       | 1 write per flash page | 3 days
+B: page map in RAM   | Loses map. Update fails.           | 0 KiB       | 0 writes               | 1 day
+No change            | Fails on 3% of updates (measured). | 0 KiB       | 0 writes               | 0 days
 
-*Table 2: Only option A continues an update after a power loss.*
+*Table 2: Only option A continues an update after a power loss, at a cost of 4
+KiB and 1 write per page.*
 
-Option B and the option "no change" do not meet the first criterion. Option A
-meets both criteria. Therefore the design stores the page map in flash.
+Option B and the option "no change" do not meet the power-loss criterion. Option
+A meets both required limits, so the design stores the page map in flash.
 
 ## Code block
 
@@ -221,6 +280,47 @@ bucket in the gateway drops frames above the client rate limit (see the
 [Open: What are the token rate, the burst size, and the primary citation
 for the overload study?]
 ```
+
+## Tracked open questions
+
+This example applies the rules for an open-questions section. It keeps tracked
+questions out of `[Open: question]` markers, marks open and closed items, adds
+trade-offs, and frames open choices as options.
+
+```text
+## Key storage
+
+The daemon stores the session key in the kernel keyring. On reboot, the
+daemon fetches a fresh key from the provisioning service.
+
+## Open questions
+
+| Item | Question | Comments |
+| --- | --- | --- |
+| Rotation | Every 24 h or per boot? | Decided: rotate per boot. |
+| Key store | Kernel keyring or TPM? | Ask the security team. |
+```
+
+After the rules, the body presents the kernel keyring as one option and points
+to the open question, without an `[Open: ...]` marker. Table 3 adds a status
+column and states the trade-offs from the system facts.
+
+```markdown
+## Key storage
+
+In one option under review, the daemon stores the session key in the
+kernel keyring (see Key store in Open questions). On reboot, the daemon
+fetches a new key from the provisioning service (see Rotation).
+```
+
+Table 3 tracks both the settled rotation schedule and the open storage choice.
+
+Item      | Status | Question                | Trade-offs and decision notes
+--------- | ------ | ----------------------- | -----------------------------
+Rotation  | Closed | Every 24 h or per boot? | Per-boot rotation avoids timer state. RAM loss clears keys.
+Key store | Open   | Kernel keyring or TPM?  | Keyring adds 0 ms. TPM blocks root reads and adds 12 ms.
+
+*Table 3: Only the key-store question remains open for reviewer feedback.*
 
 ## Developer documentation
 

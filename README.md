@@ -24,7 +24,7 @@ flowchart LR
 
 ---
 
-## Skill Catalog (46 Skills)
+## Skill Catalog (47 Skills)
 
 ### 1. Pre-Code Engineering Synthesis (`specs` Suite — 11 Skills)
 
@@ -100,11 +100,12 @@ flowchart LR
 | [harden-build](harden-build/SKILL.md) | Production ELF mitigations (`PIE`, Full `RELRO`, `FORTIFY=3`, `CET`/`PAC+BTI`, LTO `CFI`), `scripts/check-elf.sh`, fuzzing, MC/DC, mutation, and formal proofs. |
 | [web-hardening](web-hardening/SKILL.md) | Centralized HTTP security headers, session-bound CSRF with explicit exemption tables, hash-allowlisted CSP + Trusted Types, XSSI, and BREACH scoping. |
 
-### 7. Technical Writing & Domain Reference Tools (2 Skills)
+### 7. Technical Writing & Domain Reference Tools (3 Skills)
 
 | Skill | Role & Scope |
 | --- | --- |
-| [writing-tech-docs](writing-tech-docs/SKILL.md) | 32 numbered rules (`R1`–`R32`) for decision docs (specs, ADRs, RFCs) and developer/operator docs (READMEs, runbooks, references), plus `scripts/doc_lint.py`. |
+| [writing-tech-docs](writing-tech-docs/SKILL.md) | 32 numbered rules (`R1`–`R32`) for decision docs (specs, ADRs, RFCs) and developer/operator docs (READMEs, runbooks, references), structure-first existing-doc revisions, plus `scripts/doc_lint.py`. |
+| [tech-docs-diagrams](tech-docs-diagrams/SKILL.md) | 10 numbered rules (`D1`–`D10`) for source-backed Mermaid and Graphviz DOT diagrams (spatial value, cognitive-load limits, ID-free labels, Okabe-Ito red-green-safe palette), plus `scripts/diagram_lint.py`. |
 | [schwab-api](schwab-api/SKILL.md) | Three-legged OAuth 2.0, account/order REST endpoints, WebSocket streaming, and TypeScript schemas for the Charles Schwab Trading API. |
 
 ---
@@ -128,7 +129,8 @@ Several skills include zero-dependency CLI tools for deterministic verification:
 
 | Script | Purpose |
 | --- | --- |
-| [writing-tech-docs/scripts/doc_lint.py](writing-tech-docs/scripts/doc_lint.py) | Lints Markdown against measurable `R1`–`R32` prose/table/code/link rules and `--compare ORIG REVISED` preservation limits. |
+| [writing-tech-docs/scripts/doc_lint.py](writing-tech-docs/scripts/doc_lint.py) | Lints Markdown against measurable `R1`–`R32` prose/table/code/link rules and `--compare ORIG REVISED` (`--allow-restructure`) preservation limits. |
+| [tech-docs-diagrams/scripts/diagram_lint.py](tech-docs-diagrams/scripts/diagram_lint.py) | Lints Markdown, `.mmd`, and `.dot` files against `D1`–`D10` source-backed diagram, capacity, label, and colorblind-safe palette rules. |
 | [ui-colors/scripts/oklch_palette.py](ui-colors/scripts/oklch_palette.py) | Generates perceptual OKLCh ramps, verifies WCAG 2.2 + APCA contrast & sRGB gamut clamping, and emits Rust/C++/Go/CSS constants. |
 | [harden-audit/scripts/audit.sh](harden-audit/scripts/audit.sh) | Read-only Linux host, listener, firewall, sshd, sysctl, SUID, ELF mitigation, and Docker security evidence collector (`--deep` optional). |
 | [harden-build/scripts/check-elf.sh](harden-build/scripts/check-elf.sh) | Audits ELF binaries and shared libraries for `PIE`, Full `RELRO`, `NX`, `FORTIFY`, `CET`/`PAC+BTI`, `CFI`, and leaked sanitizer runtimes. |
