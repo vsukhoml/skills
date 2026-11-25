@@ -12,14 +12,14 @@ Options:
                             and operator documentation.
   --link-root DIR           Directory that relative links start from. Give it
                             if the checked file is a copy in another directory.
-  --allow-restructure       With --compare, allow intentional heading and
-                            section-order changes while checking code blocks,
-                            identifiers, links, and numbers.
+  --allow-restructure       With --compare, allow requested heading and
+                            section-order restructuring while checking code
+                            blocks, identifiers, links, and numbers.
   --strict                  Count open items as findings for the exit status.
 
 Exit status: 0 for no findings, 1 for findings, 2 for a file that cannot be
-read. Open items are printed with the label OPEN. They do not change the exit
-status unless --strict is given.
+read. Open items (OPEN) and modal advisories (R28 advisory) do not change the
+exit status unless --strict is given.
 
 The script measures only what a program can measure: lengths, counts,
 preserved tokens, and known words. A clean result does not prove that a
@@ -274,16 +274,7 @@ WORDS = (
         'not impossible|not insignificant|not unrelated|not without',
         'write a positive statement',
     ),
-    # R28: modal verbs with two meanings, and relative dates.
-    (
-        'R28',
-        'should',
-        (
-            'write "must" (requirement) or "we expect" (prediction), or state'
-            ' the action as a part of the proposal'
-        ),
-    ),
-    ('R28', 'could', 'write "can" (ability) or "might" (possibility)'),
+    # R28: subjective advice phrases, loopholes, and relative dates.
     (
         'R28',
         (
@@ -291,9 +282,20 @@ WORDS = (
             ' recommended|it is advisable|it is better to|best practice|best'
             ' practices'
         ),
-        'state the action with the criterion or the fact that decides it',
+        (
+            'write a conditional imperative ("If X, do Y"), or state the'
+            ' decision with its criterion'
+        ),
     ),
-    ('R28', 'would', 'state the condition: "If X occurs, Y occurs."'),
+    (
+        'R28',
+        (
+            'if possible|where possible|when possible|as appropriate|where'
+            ' appropriate|when necessary|if necessary|if applicable|where'
+            ' applicable|ideally|normally|typically'
+        ),
+        'state the exact condition or remove the loophole',
+    ),
     (
         'R28',
         'recently|soon|shortly|in the near future|asap',
@@ -324,12 +326,18 @@ WORDS = (
     ),
     (
         'R25',
-        'embark|embarks|unleash|unleashes|elevate|elevates|supercharge|supercharges',
+        (
+            'embark|embarks|unleash|unleashes|elevate|elevates|'
+            'supercharge|supercharges'
+        ),
         'use a common literal verb',
     ),
     (
         'R25',
-        'spearhead|spearheads|bolster|bolsters|foster|fosters|encompass|encompasses|underpin|underpins',
+        (
+            'spearhead|spearheads|bolster|bolsters|foster|fosters|'
+            'encompass|encompasses|underpin|underpins'
+        ),
         'use a common literal verb',
     ),
     # R29: comments about the document instead of the system.
@@ -360,23 +368,33 @@ WORDS = (
     ),
     (
         'R30',
-        'notably|interestingly|importantly|crucially|surprisingly|undoubtedly|genuinely|truly|frankly',
+        (
+            'notably|interestingly|importantly|crucially|surprisingly|'
+            'undoubtedly|genuinely|truly|frankly'
+        ),
         'delete and let the fact carry the weight',
     ),
     (
         'R30',
-        'pivotal|watershed|groundbreaking|transformative|unprecedented|paramount|game-changing',
+        (
+            'pivotal|watershed|groundbreaking|transformative|unprecedented|'
+            'paramount|game-changing'
+        ),
         'state the measurable effect, or delete',
     ),
     (
         'R30',
-        'meticulous|meticulously|intricate|intricacies|multifaceted|holistic|holistically|ever-evolving|actionable|impactful',
+        (
+            'meticulous|meticulously|intricate|intricacies|multifaceted|'
+            'holistic|holistically|ever-evolving|actionable|impactful'
+        ),
         'state the exact property, or delete',
     ),
     (
         'R30',
         (
-            'tapestry|beacon|realm|paradigm|synergy|synergies|cornerstone|testament to'
+            'tapestry|beacon|realm|paradigm|synergy|synergies|'
+            'cornerstone|testament to'
         ),
         'use a literal technical noun',
     ),
@@ -421,20 +439,20 @@ PATTERN_NOTES = (
         'use a list or merge short sections into their parent',
     ),
     (
-        'R8',
+        'OPEN',
         '[Open: question]',
         'answer the open item or move it to an open-questions section',
     ),
     (
         'R10',
-        'table of (optional ID, item name, prose explanation)',
-        'replace with a bold/underlined list or paragraph-length sections',
+        'table of (optional ID, item name, prose explanation), or empty cell',
+        'use a list/sections, or write 0, None, N/A, or Not measured',
     ),
     (
         'R11',
         (
-            'image without alternative text (diagram topology/relation rules'
-            ' are manual)'
+            'image without alternative text (run diagram_lint.py for diagram'
+            ' rules)'
         ),
         'add alternative text and explain image labels in body text',
     ),
@@ -461,8 +479,18 @@ PATTERN_NOTES = (
         'tab or smart quote in code block',
         'use spaces and straight ASCII characters',
     ),
+    (
+        'R20',
+        'informational Note/Tip callout in decision doc, or consecutive boxes',
+        'fold notes into prose and reserve callouts for hazards/invariants',
+    ),
     ('R26', "contraction (don't, it's)", 'write the full words'),
     ('R27', '"-ing" clause after a comma', 'start a new sentence'),
+    (
+        'R27',
+        '2 or more negations in a conditional sentence',
+        'rewrite as a positive front-loaded condition',
+    ),
     ('R17', 'heading in title case', 'use sentence case'),
     ('R17', 'dash or "&" in a heading', 'write a short topic label'),
     ('R26', '"~" before a number', 'write "about"'),
@@ -472,6 +500,11 @@ PATTERN_NOTES = (
         'R26',
         '2 or more slashes between words in a table cell',
         'write "and" or "or", or move the detail to the page of the item',
+    ),
+    (
+        'R14',
+        'agentless obligation passive (must/cannot/will be <participle>)',
+        'name the actor that owns the obligation',
     ),
     (
         'R14',
@@ -485,7 +518,11 @@ PATTERN_NOTES = (
     ),
     ('R27', 'This/That/These/Those + verb', 'put a noun after the pronoun'),
     ('R27', '3 or more "it" in one sentence', 'repeat the nouns'),
-    ('R28', 'may (lower case)', 'write "can" or "might"'),
+    (
+        'R28 (advisory)',
+        'should / may / could / would (outside declared normative spec words)',
+        'prefer a conditional imperative ("If X, do Y") or fixed-meaning verb',
+    ),
     ('R28', 'date with slashes', 'write year-month-day'),
     ('R28', 'relative period (last 30 days)', 'give the dates'),
     ('R28', 'quarter of a year (Q1 to Q4)', 'give the months'),
@@ -522,6 +559,7 @@ SHOUT_WORDS = frozenset((
 _FENCE = re.compile(r'^\s*(`{3,}(?=[^`]*$)|~{3,})(.*)$')
 _SMART_CODE_CHARS = re.compile(r'[\u2018\u2019\u201c\u201d\u2013\u2014\u2026]')
 _PROSE_CODE_LANGS = frozenset(('text', 'plaintext', 'txt', 'markdown', 'md'))
+_DIAGRAM_CODE_LANGS = frozenset(('mermaid', 'dot', 'graphviz'))
 _TAB_OK_LANGS = frozenset(('makefile', 'make'))
 _YAML_KEY = re.compile(r'^[A-Za-z0-9_.-]+\s*:')
 _THEMATIC_BREAK = re.compile(
@@ -532,7 +570,8 @@ _LINT_ON = re.compile(r'^\s*<!--\s*doc-lint:\s*on\s*-->\s*$')
 _QUOTE_PREFIX = re.compile(r'^\s*(?:>\s?)+')
 _HEADING = re.compile(r'^(#{1,6})\s+(.*?)\s*#*\s*$')
 _HEADING_ID = re.compile(r'^(?:[A-Z]{1,6}-\d+[A-Za-z]?):?\s*')
-_APPENDIX_TITLE = re.compile(r'^appendix\b', re.IGNORECASE)
+_APPENDIX_TITLE = re.compile(r'^appendi(?:x|ces)\b', re.IGNORECASE)
+_NOT_APPLICABLE = re.compile(r'^\s*(?:not\s+applicable|n/a)\b', re.IGNORECASE)
 _LIST_ITEM = re.compile(r'^(\s*)([-*+]|\d+[.)])\s+(.*)$')
 _TABLE_RULE = re.compile(r'^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$')
 _CELL_SPLIT = re.compile(r'(?<!\\)\|')
@@ -551,6 +590,10 @@ _ID_HEADER = re.compile(
 )
 _ID_CELL = re.compile(r'^(?:#?\d+[.)]?|[A-Za-z]{1,6}[-_.]?\d+[A-Za-z]?)$')
 _ALERT_TAG = re.compile(r'^\s*\[!\w+\]')
+_INFO_CALLOUT = re.compile(
+    r'^\s*(?:\[!(?:NOTE|TIP)\]|\*{0,2}(?:Note|Tip)\s*:)',
+    re.IGNORECASE,
+)
 _CALLOUT = re.compile(
     r'^\s*(?:\[!\w+\]|\*{0,2}(?:Note|Warning|Caution|Important|Tip)\s*:)',
     re.IGNORECASE,
@@ -596,7 +639,8 @@ _SEMICOLON = re.compile(r';')
 _DASH = re.compile(r'\u2014|\s\u2013\s|\s--\s')
 _CONTRACTION = re.compile(
     r"\b(?:\w+n['\u2019]t|\w+['\u2019](?:ll|re|ve|m|d)|"
-    r"(?:it|that|there|what|let|here|who|he|she|how|where|when|why)['\u2019]s)\b",
+    r'(?:it|that|there|what|let|here|who|he|she|how|where|when|why)'
+    r"['\u2019]s)\b",
     re.IGNORECASE,
 )
 _ING_CLAUSE = re.compile(
@@ -680,7 +724,7 @@ _QUANTITY_BEFORE = re.compile(r'\d[\w.%]*\s+(?:times\s+)?$')
 _NEEDS_QUANTITY = ('give a number', 'give the quantity', 'give the cost')
 _STATUS_NOTE = re.compile(
     r'\((?:measured|calculated|estimated|derived|verified in source|cited|'
-    r'reported|assumed|not measured|not verified)\b[^()]*\)',
+    r'reported|assumed|not measured|not verified|not known)\b[^()]*\)',
     re.IGNORECASE,
 )
 _TILDE_NUMBER = re.compile(r'(?<![\w/.])~\s?\d')
@@ -700,6 +744,22 @@ _PASSIVE = re.compile(
     r'\b(?:is|are|was|were|be|been|being|gets|get|got)\s+'
     r'(?:(?:not|also|never|always|only|then|still|first|\w+ly)\s+){0,2}'
     r'(' + _PARTICIPLE + r')\b',
+    re.IGNORECASE,
+)
+_OBLIGATION_PASSIVE = re.compile(
+    r'\b(?:must|cannot|will)\s+(?:not\s+)?be\s+'
+    r'(?:(?:also|never|always|only|then|still|first|\w+ly)\s+){0,2}'
+    r'(' + _PARTICIPLE + r')\b',
+    re.IGNORECASE,
+)
+_DOUBLE_NEG_COND = re.compile(
+    r'\b(?:(?:not|never)\b[^.?!]{0,120}\bunless|'
+    r'unless\b[^.?!]{0,120}\b(?:not|never)|'
+    r'if\b[^.?!]{0,120}\b(?:not|never)\b[^.?!]{0,120}\b(?:not|never|unless))\b',
+    re.IGNORECASE,
+)
+_NEG_SAFE = re.compile(
+    r'\b(?:or\s+not|not\s+(?:measured|verified|known|applicable))\b',
     re.IGNORECASE,
 )
 # Participles that describe a state. They are adjectives, not passive verbs.
@@ -732,7 +792,37 @@ _SLASH_OK = frozenset((
 ))
 MAX_CELL_SLASH_PAIRS = 1
 _HEADING_SYMBOL = re.compile(r'\u2014|\s\u2013\s|\s--\s|\s&\s')
-_MAY = re.compile(r'(?<![\w-])may(?![\w-])')
+_SHOULD_MODAL = re.compile(r'(?<![\w-])should(?![\w-])', re.IGNORECASE)
+_MAY_MODAL = re.compile(r'(?<![\w-])(?:may|MAY)(?![\w-])')
+_COULD_MODAL = re.compile(r'(?<![\w-])could(?![\w-])', re.IGNORECASE)
+_WOULD_MODAL = re.compile(r'(?<![\w-])would(?![\w-])', re.IGNORECASE)
+_NORMATIVE_HEADING = re.compile(
+    r'^(?:normative\s+(?:key\s*words?|terms?|language)|'
+    r'requirements?\s+language|conventions(?:\s+and\s+terminology)?)$',
+    re.IGNORECASE,
+)
+_NORMATIVE_LEAD = re.compile(
+    r'^(?:[-*+]\s+)?\*{0,2}(?:normative|conformance|requirement)s?\s+'
+    r'(?:key\s*words?|terms?|levels?|language)\*{0,2}\s*:\*{0,2}',
+    re.IGNORECASE,
+)
+_NORMATIVE_SCOPE = re.compile(
+    r'\b(?:this\s+(?:document|spec(?:ification)?|standard)|herein)\b',
+    re.IGNORECASE,
+)
+_NORMATIVE_DECL = re.compile(
+    r'\b(?:rfc\s*(?:2119|8174)|bcp\s*14|'
+    r'normative\s+(?:key\s*words?|terms?|language|requirement|conformance)|'
+    r'(?:key\s*words?|terms?)\b[^.]{0,140}\bare\s+'
+    r'(?:to\s+be\s+interpreted|normative))\b',
+    re.IGNORECASE,
+)
+_NORMATIVE_WORDS = re.compile(
+    r'\bmust\b.*\b(?:should|may)\b|\b(?:should|may)\b.*\bmust\b',
+    re.IGNORECASE,
+)
+_NORMATIVE_NOT_BEFORE = re.compile(r'\b(?:MUST|SHALL|SHOULD)\s+$')
+_NORMATIVE_NOT_AFTER = re.compile(r'^\s+RECOMMENDED\b')
 _SLASH_DATE = re.compile(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b')
 _QUARTER = re.compile(r'\bQ[1-4]\b')
 _CAPITAL_WORD = re.compile(r'\b[A-Z]{3,}\b')
@@ -747,11 +837,12 @@ _SHELL_PROMPT = re.compile(r'^\$\s+\S')
 
 @dataclasses.dataclass(frozen=True, order=True, slots=True)
 class Finding:
-  """One rule violation at one line."""
+  """One rule violation or advisory at one line."""
 
   line: int
   rule: str
   message: str
+  advisory: bool = False
 
 
 @dataclasses.dataclass(slots=True)
@@ -1079,7 +1170,7 @@ def _table_rows(
 
 
 def _is_block_caption(block: Block | None, preceding: Block | None) -> bool:
-  """Returns True if block is a caption below a preceding table or code block."""
+  """Returns True if block captions a preceding table or code block."""
   if (
       block is None
       or block.kind != 'text'
@@ -1118,6 +1209,8 @@ class _Linter:
     self._heading_cases: list[tuple[int, bool, bool]] = []
     self._sentences = 0
     self._passive_lines: list[int] = []
+    self._prev_was_callout = False
+    self._normative_style = ''
 
   def _check_links_and_images(self, masked: str, first_line: int) -> None:
     """Checks image alt text and local link paths and heading anchors."""
@@ -1171,8 +1264,10 @@ class _Linter:
               f'missing heading anchor "#{fragment}" in "{rel_path}"',
           )
 
-  def _add(self, line: int, rule: str, message: str) -> None:
-    self.findings.append(Finding(line, rule, message))
+  def _add(
+      self, line: int, rule: str, message: str, advisory: bool = False
+  ) -> None:
+    self.findings.append(Finding(line, rule, message, advisory=advisory))
 
   def _take_open_items(
       self, raw: str, first_line: int, report: bool = True
@@ -1200,7 +1295,18 @@ class _Linter:
     listed = _TERM_EXCEPTIONS.sub(
         lambda m: _same_lines(' TERM ', m.group(0)).ljust(len(m.group(0))), text
     )
+    flat = ' '.join(cleaned.split())
+    is_norm_decl = bool(
+        self._normative_style
+        and (
+            _NORMATIVE_DECL.search(flat)
+            or _NORMATIVE_LEAD.match(flat)
+            or _NORMATIVE_WORDS.search(flat)
+        )
+    )
     for rule, regex, advice in _WORD_RULES:
+      if self._docs and rule == 'R24':
+        continue
       for match in regex.finditer(listed):
         if advice.startswith(_NEEDS_QUANTITY) and (
             _QUANTITY_AFTER.match(listed[match.end() :])
@@ -1208,14 +1314,65 @@ class _Linter:
         ):
           continue
         found = ' '.join(match.group(0).split())
+        if (
+            is_norm_decl
+            and rule == 'R29'
+            and found.lower() in ('in this document', 'this document describes')
+        ):
+          continue
         context = _context(text, match.start(), match.end())
         self._add(
             _line_of(text, match.start(), first_line),
             rule,
             f'"{found}" in "{context}": {advice}',
         )
+    modal_checks = (
+        (
+            _SHOULD_MODAL,
+            'should',
+            'SHOULD',
+            (
+                'prefer a conditional imperative ("If X, do Y"), "must", or '
+                '"we expect"'
+            ),
+        ),
+        (
+            _MAY_MODAL,
+            'may',
+            'MAY',
+            'prefer a conditional imperative ("If X, do Y"), "can", or "might"',
+        ),
+        (
+            _COULD_MODAL,
+            '',
+            '',
+            'prefer a conditional imperative ("If X, do Y"), "can", or "might"',
+        ),
+        (
+            _WOULD_MODAL,
+            '',
+            '',
+            (
+                'prefer an explicit conditional ("If X, do Y" or '
+                '"If X occurs, Y occurs")'
+            ),
+        ),
+    )
+    for m_regex, lower_kw, upper_kw, m_advice in modal_checks:
+      for match in m_regex.finditer(listed):
+        tok = match.group(0)
+        if self._normative_style == 'upper' and upper_kw and tok == upper_kw:
+          continue
+        if self._normative_style == 'lower' and lower_kw and tok == lower_kw:
+          continue
+        context = _context(text, match.start(), match.end())
+        self._add(
+            _line_of(text, match.start(), first_line),
+            'R28',
+            f'"{tok}" in "{context}": {m_advice}',
+            advisory=True,
+        )
     patterns = (
-        (_MAY, 'R28', '"may"', 'write "can" or "might"'),
         (_SEMICOLON, 'R13', 'semicolon', 'write two sentences'),
         (_DASH, 'R13', 'dash between clauses', 'write two sentences'),
         (_CONTRACTION, 'R26', 'contraction', 'write the full words'),
@@ -1273,12 +1430,22 @@ class _Linter:
             f'{label} in "{context}": {advice}',
         )
     for match in _CAPITAL_WORD.finditer(text):
-      if match.group(0) in SHOUT_WORDS:
-        self._add(
-            _line_of(text, match.start(), first_line),
-            'R20',
-            f'"{match.group(0)}" in capital letters: use sentence case',
-        )
+      word = match.group(0)
+      if word not in SHOUT_WORDS:
+        continue
+      if self._normative_style == 'upper':
+        if word == 'MUST':
+          continue
+        if word == 'NOT' and (
+            _NORMATIVE_NOT_BEFORE.search(text[: match.start()])
+            or _NORMATIVE_NOT_AFTER.match(text[match.end() :])
+        ):
+          continue
+      self._add(
+          _line_of(text, match.start(), first_line),
+          'R20',
+          f'"{word}" in capital letters: use sentence case',
+      )
 
   def _check_prose(self, block: Block) -> None:
     """Checks one paragraph, list item, or callout block."""
@@ -1317,9 +1484,26 @@ class _Linter:
           f'draft placeholder "{match.group(0)}": '
           'supply the fact or use [Open: question]',
       )
-    if _CALLOUT.match(raw):
-      self._callouts += 1
+    is_callout = bool(_CALLOUT.match(raw))
+    if is_callout:
+      is_info = bool(_INFO_CALLOUT.match(raw))
+      if not self._docs or is_info:
+        self._callouts += 1
+      if not self._docs and is_info:
+        self._add(
+            block.line,
+            'R20',
+            'informational Note/Tip callout in decision document: '
+            'fold into prose or delete',
+        )
+      if self._prev_was_callout:
+        self._add(
+            block.line,
+            'R20',
+            'consecutive callout boxes: merge or convert notes to prose',
+        )
       raw = _ALERT_TAG.sub('', raw)
+    self._prev_was_callout = is_callout
     cleaned = _clean_inline(raw)
     self._characters += len(cleaned)
     count = _count_words(cleaned)
@@ -1346,14 +1530,16 @@ class _Linter:
             f'"{_excerpt(sentence)}"',
         )
       self._sentences += 1
+      unquoted = _QUOTED.sub(' QUOTE ', sentence)
       passives = [
-          m for m in _PASSIVE.finditer(sentence)
+          m
+          for m in _PASSIVE.finditer(unquoted)
           if m.group(1).lower() not in _STATE_WORDS
       ]
       if passives:
         self._passive_lines.append(line)
       for match in passives:
-        if _BY_ACTOR.match(sentence[match.end() :]):
+        if _BY_ACTOR.match(unquoted[match.end() :]):
           self._add(
               line,
               'R14',
@@ -1361,7 +1547,31 @@ class _Linter:
               f'"{_context(sentence, match.start(), match.end())}": '
               'make the actor the subject',
           )
-      if not self._docs and sentence.count('CODE') > MAX_CODE_NAMES:
+      for match in _OBLIGATION_PASSIVE.finditer(unquoted):
+        if match.group(1).lower() in _STATE_WORDS or _BY_ACTOR.match(
+            unquoted[match.end() :]
+        ):
+          continue
+        self._add(
+            line,
+            'R14',
+            'agentless passive obligation in '
+            f'"{_context(sentence, match.start(), match.end())}": '
+            'name the actor that owns the obligation',
+        )
+      neg_check = _NEG_SAFE.sub(' ', unquoted)
+      if _DOUBLE_NEG_COND.search(neg_check):
+        self._add(
+            line,
+            'R27',
+            '2 or more negations in a conditional sentence: '
+            f'rewrite positively ("{_excerpt(sentence)}")',
+        )
+      if (
+          not self._docs
+          and not self._appendix_level
+          and sentence.count('CODE') > MAX_CODE_NAMES
+      ):
         self._add(
             line,
             'R15',
@@ -1420,12 +1630,30 @@ class _Linter:
           'R10',
           f'table of {columns} columns (limit {MAX_TABLE_COLUMNS})',
       )
-    self._check_key_description_table(block.line, rows, columns)
-    for row_line, cells in rows:
+    if not self._docs and not self._appendix_level:
+      self._check_key_description_table(block.line, rows, columns)
+    cell_limit = (
+        MAX_CELL_WORDS_DOCS if self._appendix_level else self._cell_limit
+    )
+    for row_idx, (row_line, cells) in enumerate(rows):
+      if row_idx > 0 and len(cells) < columns:
+        self._add(
+            row_line,
+            'R10',
+            'empty table cell: write 0, None, N/A, or Not measured',
+        )
       for cell in cells:
+        if row_idx > 0 and not cell.strip():
+          self._add(
+              row_line,
+              'R10',
+              'empty table cell: write 0, None, N/A, or Not measured',
+          )
+          continue
         masked_cell = _mask_literals(cell)
-        for match in _BOLD.finditer(masked_cell):
-          self._bold_characters += len(_clean_inline(match.group(1)))
+        if row_idx > 0:
+          for match in _BOLD.finditer(masked_cell):
+            self._bold_characters += len(_clean_inline(match.group(1)))
         if _HERE_LINK.search(masked_cell):
           self._add(row_line, 'R19', 'link text does not describe the target')
         self._check_links_and_images(masked_cell, row_line)
@@ -1446,11 +1674,11 @@ class _Linter:
         cleaned_cell = _clean_inline(cell)
         self._characters += len(cleaned_cell)
         length = _count_words(cleaned_cell)
-        if length > self._cell_limit:
+        if length > cell_limit:
           self._add(
               row_line,
               'R10',
-              f'table cell of {length} words (limit {self._cell_limit}): '
+              f'table cell of {length} words (limit {cell_limit}): '
               f'"{_excerpt(cell)}"',
           )
         self._check_words(cleaned_cell, row_line)
@@ -1481,7 +1709,7 @@ class _Linter:
       rows: list[tuple[int, list[str]]],
       columns: int,
   ) -> None:
-    """Flags 2- or 3-column (optional ID, name/link, prose explanation) tables."""
+    """Flags 2- or 3-col (optional ID, name, prose explanation) tables."""
     if columns not in (2, 3) or len(rows) < 3:
       return
     data_rows = [cells for _, cells in rows[1:] if len(cells) == columns]
@@ -1532,6 +1760,18 @@ class _Linter:
       if has_child:
         continue
       sec_blocks = blocks[pos + 1 : next_pos]
+      first_txt = (
+          _clean_inline('\n'.join(sec_blocks[0].lines)).strip()
+          if sec_blocks and sec_blocks[0].kind == 'text'
+          else ''
+      )
+      sents = sum(
+          len(_sentences(_clean_inline('\n'.join(b.lines))))
+          for b in sec_blocks
+          if b.kind in ('text', 'item')
+      )
+      if sents <= 2 and _NOT_APPLICABLE.match(first_txt):
+        continue
       h_words = _count_words(_clean_inline(hb.lines[0]).strip())
       c_words = sum(
           _count_words(_clean_inline('\n'.join(b.lines))) for b in sec_blocks
@@ -1549,11 +1789,6 @@ class _Linter:
           for b in sec_blocks
       )
       list_items = sum(1 for b in sec_blocks if b.kind == 'item')
-      sents = sum(
-          len(_sentences(_clean_inline('\n'.join(b.lines))))
-          for b in sec_blocks
-          if b.kind in ('text', 'item')
-      )
       is_brief = not has_struct and list_items < 3 and sents <= 2
       sibling_groups.setdefault((parent_pos, hb.size), []).append(
           (hb.line, is_brief)
@@ -1576,7 +1811,7 @@ class _Linter:
       previous: Block | None,
       before_previous: Block | None = None,
   ) -> None:
-    """Checks one fenced code block for framing, size, and Google Docs safety."""
+    """Checks one fenced code block for framing, size, and Docs safety."""
     if block.unclosed:
       self._add(block.line, 'R19', 'unclosed fenced code block')
     if (
@@ -1587,19 +1822,24 @@ class _Linter:
       self._add(
           block.line, 'R12', 'code block without an introductory sentence above'
       )
-    if block.size > MAX_CODE_LINES and not self._appendix_level:
+    lang = block.info.split()[0].lower() if block.info else ''
+    is_diagram = lang in _DIAGRAM_CODE_LANGS
+    if (
+        block.size > MAX_CODE_LINES
+        and not self._appendix_level
+        and not is_diagram
+    ):
       self._add(
           block.line,
           'R3',
           f'code block of {block.size} lines '
           f'(limit {MAX_CODE_LINES}): move it to an appendix',
       )
-    lang = block.info.split()[0].lower() if block.info else ''
     if not lang:
       self._add(
           block.line,
           'R19',
-          'code block without a language tag (use "text" for plain text)',
+          'code block without a language tag (for example "go", "rust", "sh")',
       )
     if block.size == 0:
       self._add(block.line, 'R19', 'empty code block')
@@ -1647,7 +1887,7 @@ class _Linter:
         )
         reported_smart = True
       width = len(code_line.expandtabs(4))
-      if width > MAX_CODE_WIDTH:
+      if width > MAX_CODE_WIDTH and not is_diagram:
         self._add(
             line_number,
             'R19',
@@ -1737,10 +1977,20 @@ class _Linter:
     """Checks one document."""
     self._self_anchors = _document_anchors(text)
     blocks = parse_blocks(text.splitlines())
+    self._normative_style = _detect_normative_style(blocks)
     if (
         len(blocks) > 1
-        and blocks[0].kind == 'heading'
-        and blocks[0].size == 1
+        and (
+            (blocks[0].kind == 'heading' and blocks[0].size == 1)
+            or (
+                blocks[0].kind == 'text'
+                and len(blocks[0].lines) == 1
+                and not blocks[0]
+                .lines[0]
+                .rstrip()
+                .endswith(('.', '!', '?', ':'))
+            )
+        )
         and blocks[1].kind == 'heading'
         and not _SUMMARY_TITLE.search(blocks[1].lines[0])
     ):
@@ -1762,12 +2012,15 @@ class _Linter:
       elif not (block.kind in ('text', 'code', 'table') and block.indent > 0):
         self._close_lists()
       if block.kind == 'heading':
+        self._prev_was_callout = False
         self._check_heading(block)
       elif block.kind == 'code':
+        self._prev_was_callout = False
         previous = blocks[position - 1] if position > 0 else None
         before_prev = blocks[position - 2] if position > 1 else None
         self._check_code(block, previous, before_prev)
       elif block.kind == 'table':
+        self._prev_was_callout = False
         previous = blocks[position - 1] if position > 0 else None
         before_prev = blocks[position - 2] if position > 1 else None
         following = blocks[position + 1] if position + 1 < len(blocks) else None
@@ -1824,11 +2077,45 @@ class _Linter:
     self.findings.sort(
         key=lambda f: (
             f.line,
+            f.advisory,
             int(f.rule[1:]) if f.rule[1:].isdigit() else 0,
             f.rule,
             f.message,
         )
     )
+
+
+def _detect_normative_style(blocks: list[Block]) -> str:
+  """Returns 'upper', 'lower', or '' if a spec declares normative keywords."""
+  non_code = [b for b in blocks if b.kind != 'code']
+  for idx, block in enumerate(non_code):
+    if block.kind == 'heading':
+      title = _clean_inline(block.lines[0]).strip()
+      if not _NORMATIVE_HEADING.match(title) or idx + 1 >= len(non_code):
+        continue
+      window = ' '.join(' '.join(non_code[idx + 1].lines).split())
+    else:
+      window = ' '.join(' '.join(block.lines).split())
+      if not (
+          _NORMATIVE_LEAD.match(window)
+          or (
+              _NORMATIVE_SCOPE.search(window) and _NORMATIVE_DECL.search(window)
+          )
+      ):
+        continue
+    has_upper = bool(re.search(r'\b(?:MUST|SHOULD)\b', window))
+    has_lower = bool(
+        re.search(r'\blowercase\b', window, re.IGNORECASE)
+        or (
+            re.search(r'\bmust\b', window)
+            and re.search(r'\b(?:should|may)\b', window)
+            and not has_upper
+        )
+    )
+    if has_lower:
+      return 'lower'
+    return 'upper'
+  return ''
 
 
 def lint(
@@ -1971,8 +2258,9 @@ def compare_documents(
             Finding(
                 1,
                 'L-HEAD',
-                f'original heading "{raw_title}" moved, renamed, or removed '
-                '(pass --allow-restructure if restructuring)',
+                f'original heading "{raw_title}" removed or reordered '
+                '(keep existing headings unless restructuring was requested, '
+                'then pass --allow-restructure)',
             )
         )
 
@@ -2099,13 +2387,21 @@ def _report(
 ) -> int:
   """Prints the findings and the summary line. Returns the exit status."""
   for finding in findings:
-    print(f'{label}:{finding.line}: {finding.rule}: {finding.message}')
+    tag = f'{finding.rule} (advisory)' if finding.advisory else finding.rule
+    print(f'{label}:{finding.line}: {tag}: {finding.message}')
   open_items = sum(1 for f in findings if f.rule == 'OPEN')
-  count = len(findings) - open_items
+  advisories = sum(1 for f in findings if f.advisory)
+  count = len(findings) - open_items - advisories
   noun = 'finding' if count == 1 else 'findings'
   item_noun = 'open item' if open_items == 1 else 'open items'
-  print(f'{label}: {count} {noun}, {open_items} {item_noun}, {words} words')
-  return 1 if count or (strict and open_items) else 0
+  extra = ''
+  if advisories:
+    adv_noun = 'advisory' if advisories == 1 else 'advisories'
+    extra = f', {advisories} {adv_noun}'
+  print(
+      f'{label}: {count} {noun}{extra}, {open_items} {item_noun}, {words} words'
+  )
+  return 1 if count or (strict and (open_items or advisories)) else 0
 
 
 def _link_base(path: str, link_root: str | None) -> pathlib.Path | None:
@@ -2144,8 +2440,9 @@ def main(argv: list[str] | None = None) -> int:
       '--allow-restructure',
       action='store_true',
       help=(
-          'with --compare, allow intentional heading and section-order changes'
-          ' while still checking code blocks, identifiers, links, and numbers'
+          'with --compare, allow requested heading and section-order'
+          ' restructuring while still checking code blocks, identifiers, links,'
+          ' and numbers'
       ),
   )
   parser.add_argument(

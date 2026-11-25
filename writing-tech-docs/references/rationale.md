@@ -1,197 +1,162 @@
 # Rationale and evidence for the rules
 
-Each rule removes a specific cost for the reader. This file gives the reason for
-each rule and names the source by author and year. Read this file if an author
-disputes a rule or if two rules conflict.
-
-The sources do not have equal strength. Each source below has one of these 4
-labels:
-
--   **Experiment:** A controlled study that measured readers or developers.
--   **Field study:** A survey or a measurement of engineers at work.
--   **Argument:** A paper by experts that has no measurement.
--   **Practice:** A rule from a writing standard or a style guide.
+Each rule in `writing-tech-docs` removes a measured or observed reader cost.
+Consult this reference when an author disputes a rule or asks for primary
+citations. Sources carry 4 labels: **Experiment** (controlled study), **Field
+study** (workplace data or survey), **Argument** (expert analysis), or
+**Practice** (style standard).
 
 ## Structure
 
--   **R1**, page-sized sections: Readers of page-sized units build a mental map
-    of the document. They find more defects of structure than readers who
-    scroll. Working memory holds about 4 items. Sources: Piolat, Roussey, and
-    Thunin 1997 (experiment). Cowan 2001 (review of experiments).
--   **R2**, answer first: Readers understand and remember a paragraph better if
-    the main point comes first. Readers on a screen read the start of a page and
-    scan the rest. Sources: Kieras 1978 (experiment). Eye-tracking studies of
-    the Nielsen Norman Group (field study).
--   **R3**, purpose, direction, then detail: A reader who knows the goal and the
-    direction can give each detail a place. That reader can also stop at the
-    first layer that has a defect. The sources for this order are practice:
-    Slatton, "How to write a good design document", and the reader comments on
-    that article. No experiment is cited. The template "ml-design-docs" of Yan
-    uses the same order: overview, motivation and requirements, method,
-    implementation, appendix. Detail that helps a newcomer reduces the accuracy
-    of an expert, because the expert must compare it with known facts. Source:
-    Kalyuga and others 2003 (review of experiments).
--   **R4**, one home for each item (DRY): Engineers stop trusting a document
-    that is out of date or that contradicts itself. When a requirement,
-    decision, or option is defined in two places, edits update only one place.
-    Referencing the item by ID or short name and stating only local consequences
-    keeps one source of truth. Sources: Forward and Lethbridge 2002, Aghajani
-    and others 2019 (field studies).
+-   **R1**, page-sized sections: Page-sized units build a stronger mental map
+    and surface more structural defects than unbroken scrolling, within working
+    memory's 4-item limit. Sources: Piolat, Roussey, and Thunin 1997
+    (experiment). Cowan 2001 (review of experiments).
+-   **R2**, answer first: Opening with the main point raises paragraph recall,
+    and screen readers scan headings and opening lines before deciding to read
+    further. Sources: Kieras 1978 (experiment). Nielsen Norman Group
+    eye-tracking (field study).
+-   **R3**, purpose, direction, then detail: Context before detail doubled
+    recall, task-first manuals cut errors, and unlayered newcomer detail slows
+    experts. Sources: Bransford and Johnson 1972, Carroll and others 1987
+    (experiments). Luiten, Ames, and Ackerson 1980, Kalyuga and others 2003
+    (reviews).
+-   **R4**, one home for each item (DRY): Duplicated claims drift out of sync
+    and erode engineer trust. Pairing an opaque ID with a short plain slug
+    preserves information scent without split-attention jumps. Sources: Forward
+    and Lethbridge 2002, Aghajani and others 2019 (field studies). Pirolli and
+    Card 1999 (model). Schroeder and Cenkci 2018 (review).
 
 ## Selection of information
 
--   **R5**, exact contracts: Studies of documentation defects list incomplete
-    content as a main type, for example missing preconditions, error behavior,
-    and limits. Sources: Aghajani and others 2019 (field study). Meyer 1992
-    (argument) for the two sides of a contract.
--   **R6**, cut low-signal text: Interesting details that the reader does not
-    need reduce the understanding of the main chain of reasons. Source: Harp and
-    Mayer 1998 (experiment).
--   **R7**, problem without the solution: A problem that is stated as a missing
-    solution hides the cheaper alternatives. Source: design practice. No
-    experiment is cited.
--   **R8**, status of each claim: Reviewers need the status and the reason of a
-    claim to find defects. Readers do not notice an omitted item. Sources:
-    Bacchelli and Bird 2013 (field study of code review). Fischhoff, Slovic, and
-    Lichtenstein 1978 (experiment).
+-   **R5**, exact contracts and worked examples: Incomplete error and boundary
+    contracts are top developer blockers, while compact worked examples cut
+    integration errors. Sources: Uddin and Robillard 2015, Aghajani and others
+    2019 (field studies). Meng, Steinhardt, and Schubert 2020, Barbieri and
+    others 2023 (experiment and review). Meyer 1992 (argument).
+-   **R6**, cut low-signal text: Seductive or tangential details lower retention
+    and transfer of the core causal argument. Sources: Harp and Mayer 1998
+    (experiment). Rey 2012, Sundararajan and Adesope 2020 (reviews).
+-   **R7**, problem without the solution: Solution examples in problem briefs
+    trigger design fixation, and solution-first framing failed in half of 400
+    organizational decisions. Sources: Jansson and Smith 1991 (experiments).
+    Nutt 2008 (field study).
+-   **R8**, status of each claim: Reviewers need claim provenance to spot
+    defects, and even experts fail to notice omitted branches unless gaps are
+    surfaced. Sources: Bacchelli and Bird 2013 (field study). Fischhoff, Slovic,
+    and Lichtenstein 1978 (experiment).
 
 ## Lists, tables, diagrams, and code blocks
 
--   **R9**, lists for parallel items: A layout that readers can scan improved
+-   **R9**, lists for parallel items: Scannable vertical formatting improved
     measured usability by 47%. Source: Morkes and Nielsen 1997 (experiment).
--   **R10**, tables for conditions and comparisons: Readers answer questions
-    about conditional rules with fewer errors from a table than from prose.
-    Sources: Wright and Reid 1973 (experiment). Vessey 1991 (review) for exact
-    values.
--   **R11**, diagrams from source code (`tech-docs-diagrams`, D1 to D10): A
-    diagram helps only if 2D position matches system structure within crossing
-    and memory limits. Redundant non-color cues keep semantic categories legible
-    under red-green colorblindness. Sources: Larkin and Simon 1987 (argument).
-    Purchase 2002 and Huang, Eades, and Hong 2009 (experiments). Okabe and Ito
-    2008 and Moody 2009 (guidelines and argument).
--   **R12**, a frame for each block: A figure or a code block that is far from
-    its text costs the reader working memory. A lead-in
-    sentence and a caption give the role and the result to a reader who scans.
-    Sources: Chandler and Sweller 1991 (experiments). Lorch 1989 (review).
+-   **R10**, tables for conditions and comparisons: Readers evaluate branching
+    conditions and 2-to-3-digit column numbers with fewer errors in tables than
+    in prose. Sources: Wright and Reid 1973, Huysmans and others 2011
+    (experiments). Ehrenberg 1977, Vessey 1991 (reviews).
+-   **R11**, diagrams from source code (`tech-docs-diagrams`, D1 to D11): Any
+    graphic increases liking, whereas only instructive 2D topology within
+    crossing, degree, and memory limits improves comprehension. Sources: Larkin
+    and Simon 1987, Sung and Mayer 2012, Ware and others 2002, Huang, Eades, and
+    Hong 2014 (experiments). Okabe and Ito 2008, Moody 2009 (guidelines and
+    argument).
+-   **R12**, a frame for each block: Unframed blocks impose split-attention
+    search costs, whereas lead-ins and takeaway captions anchor scanning.
+    Sources: Chandler and Sweller 1991 (experiments). Schroeder and Cenkci 2018,
+    Lorch 1989 (reviews).
 
 ## Sentences and paragraphs
 
--   **R13**, one claim in each sentence: A long sentence makes the reader hold
-    open clauses in working memory. The limit of 25 words comes from standards
-    for technical manuals. Sources: Cowan 2001 (review). Practice for the
-    number.
--   **R14**, active voice, literal verb: A sentence without an actor does not
-    say which component has the obligation. Source: practice. No experiment is
-    cited.
--   **R15**, plain words before code names: A reviewer who does not know the
-    code must stop to find each code name. Source: Bacchelli and Bird 2013
-    (field study, indirect).
--   **R16**, numbers, not praise: Neutral statements in place of praise improved
-    measured usability by 27%. Source: Morkes and Nielsen 1997 (experiment).
+-   **R13**, one claim in each sentence: Long multi-clause sentences strain
+    working memory, and omitting "that" or repeated nouns causes garden-path
+    regressions. Sources: Cowan 2001 (review). Garnsey and others 1997, Britton
+    and Gülgöz 1991 (experiments).
+-   **R14**, active voice, literal verb: Agentless passives hide obligation
+    owners, noncanonical passives and nominalizations increase misparsing, and
+    out-of-order temporal clauses raise working-memory load within 300 ms.
+    Sources: Ferreira 2003, Charrow and Charrow 1979, Münte, Schiltz, and Kutas
+    1998 (experiments). Femmer and others 2017, Frattini and others 2024 (field
+    studies).
+-   **R15**, plain words before code names: Plain behavior before code symbols
+    cuts comprehension errors. Sources: Meng, Steinhardt, and Schubert 2020,
+    Lawrie and others 2006 (experiments). Bacchelli and Bird 2013 (field study).
+-   **R16**, numbers, not praise: Replacing promotional adjectives with neutral
+    measurable facts improved usability by 27%. Source: Morkes and Nielsen 1997
+    (experiment).
 
 ## Typography
 
--   **R17**, predictable headings: Clear headings let a reader scan from heading
-    to heading and read only the necessary sections. Source: eye-tracking
-    studies of the Nielsen Norman Group (field study).
--   **R18**, bold for structure only: A small number of bold cues reduces the
-    search time. Many cues reduce the attention to the text without cues.
-    Sources: Lorch, Lorch, and Klusewitz 1995 (experiment). Lorch 1989 (review).
-    Yue and others 2015 (experiment).
--   **R19**, one role for each style: A style with one meaning lets the reader
-    recognize code and links before reading them. In Google Docs, tab characters
-    jump to 12.7 mm stops and smart quotes corrupt syntax. At 10 pt, code lines
-    wider than 72 characters wrap on Letter and A4 pages. Source: practice and
-    renderer measurement.
--   **R20**, a calm page: People read text in capital letters more slowly at a
-    normal text size. Source: Arditi and Cho 2007 (experiment).
+-   **R17**, predictable headings: Literal topic headings with high information
+    scent prevent wrong-branch navigation detours. Sources: Pirolli and Card
+    1999 (model). Blackmon and others 2002 (experiment).
+-   **R18**, bold for structure only: Selective structural bolding aids
+    retention and scanning, whereas excessive highlighting depresses attention
+    to unbolded caveats. Sources: Schneider and others 2018 (review). Lorch,
+    Lorch, and Klusewitz 1995, Yue and others 2015 (experiments).
+-   **R19**, one role for each style: Consistent styles let readers spot code
+    and links pre-attentively. Markdown-backed code blocks prevent tab and
+    smart-quote corruption in Google Docs. Source: practice.
+-   **R20**, a calm page and readable body size: `ALL CAPS` and sub-10 pt fonts
+    slow reading. Repeated callouts habituate attention, dropping warning
+    compliance from 76% to 55%. Sources: Arditi and Cho 2007, Vance and others
+    2018 (experiments). Wogalter, Conzola, and Smith-Jackson 2002 (review).
 
 ## Verifiable claims
 
--   **R21**, depth by cost of reversal: A review at a higher rate removes fewer
-    defects. A longer document in the same review time increases the rate.
-    Sources: Kemerer and Paulk 2009 (field data from code and design reviews,
-    not from prose). Boehm 1988 (argument) for detail that follows risk.
--   **R22**, named, enforced, tested claims: Developers with links from
-    requirements to code completed maintenance tasks 24% faster and 50% more
-    correctly. Requirement templates reduced ambiguity in one industrial case.
-    Sources: Mäder and Egyed 2015 (experiment with developers, not reviewers).
+-   **R21**, depth by cost of reversal: Higher review rates per hour catch fewer
+    defects per page, so low-risk detail steals reviewer attention from
+    irreversible decisions. Sources: Kemerer and Paulk 2009 (field study). Boehm
+    1988 (argument).
+-   **R22**, named, enforced, tested claims: Requirement traceability links sped
+    up maintenance tasks by 24% with 50% fewer errors, and structured claim
+    templates reduced ambiguity. Sources: Mäder and Egyed 2015 (experiment).
     Mavin and others 2009 (case study).
--   **R23**, stated coverage and stated negatives: People, also experts, did not
-    notice the missing branches of a fault tree. Reviewers with specific fault
-    scenarios found more faults. Sources: Fischhoff, Slovic, and Lichtenstein
-    1978 (experiment). Porter, Votta, and Basili 1995 (experiment).
--   **R24**, factual, unbiased comparisons: Architects rate the reasons and
-    trade-offs for a design as important, and they report barriers to recording
-    them. Selecting only criteria that favor a preferred option hides stronger
-    alternatives from reviewers. Sources: Tang and others 2006 (survey). Parnas
-    and Clements 1986 (argument). Nickerson 1998 (review of experiments).
+
+## Coverage and decisions
+
+-   **R23**, stated coverage and stated negatives: Even domain experts overlook
+    omitted fault-tree branches unless failure modes are enumerated explicitly.
+    Sources: Fischhoff, Slovic, and Lichtenstein 1978, Porter, Votta, and Basili
+    1995 (experiments).
+-   **R24**, factual, unbiased comparisons: Recording trade-offs across complete
+    competing criteria counters confirmation bias during design review. Sources:
+    Tang and others 2006 (survey). Parnas and Clements 1986 (argument).
+    Nickerson 1998 (review).
 
 ## Plain English for international readers
 
--   **R25 to R28:** A reader with limited English uses the dictionary meaning of
-    each word and the grammar of each sentence. A translation program does the
-    same. A word with two meanings, an idiom, or a missing article can give a
-    wrong translation. Source: practice from controlled-language standards for
-    technical manuals, for example ASD-STE100 Simplified Technical English. No
-    experiment is cited.
-
-These rules differ from such standards in one point. The rules keep "might" for
-a possibility, because R8 needs a word for a claim that is not verified.
+-   **R25 to R28:** Controlled vocabulary (ASD-STE100), disambiguated homonym
+    jargon, conditional imperatives in place of ambiguous modals, and explicit
+    quantifiers raise comprehension for non-native readers. Formal and
+    semi-formal specs retain defined normative keywords (RFC 2119, uppercase or
+    declared lowercase), and "might" marks unverified R8 possibilities. Sources:
+    Shubert and others 1995, Britton and Gülgöz 1991, Sherman 1976
+    (experiments). Berry, Kamsties, and Krieger 2003, Femmer and others 2017
+    (field studies).
 
 ## Grounded, non-synthetic prose
 
--   **R29**, system-specific text only: Sentences that fit any system add
-    reading time without narrowing the design space. Outside migration notes,
-    readers inspect a specification to learn the target behavior, not the commit
-    history. Sources: Harp and Mayer 1998 (experiment). Forward and Lethbridge
-    2002 (field study).
--   **R30**, direct statements, not stagecraft: Readers judge importance from
-    concrete consequences, not from announcements of candor or cleverness. In
-    one parallel corpus, sentence-start adverbs such as "Notably" appeared 2 to
-    3 times as often in machine text as in human text. Sources: Morkes and
-    Nielsen 1997 (experiment). Brown and others 2024 (field study).
--   **R31**, named sources and bounded scope: Statistical AI detectors
-    misclassified more than 60% of essays by writers with limited English.
-    Therefore these rules check named sources, environment boundaries, and
-    concrete artifacts instead of guessing who wrote the text. Source: Liang and
-    others 2023 (experiment).
--   **R32**, plain copulas and literal modifiers: Direct verbs and literal
-    modifiers prevent category errors during dictionary lookup and machine
-    translation. Source: ASD-STE100 practice.
-
-## Reasons for the 4 principles
-
--   **Reader effort before writing or token cost:** Reader review and decision
-    time is almost always the tightest bottleneck in finalizing a document.
-    Spending 4 times the generation tokens to polish structure, content, and
-    style pays back across every reader. Headings, captions, and repeated names
-    add words and remove searches and re-reading. Sources: Chandler and Sweller
-    1991, Cowan 2001.
--   **Layers before one average depth:** Explicit background helps readers with
-    little knowledge and slows experts. One text at a middle depth serves
-    neither group. Sources: McNamara and others 1996, Kalyuga and others 2003
-    (experiments).
--   **Reader task before format habit:** The same facts in a different format
-    need a different number of mental steps. Sources: Larkin and Simon 1987,
-    Vessey 1991.
--   **Risk before uniform depth:** Review time is limited. Detail in a low-risk
-    part takes attention from a high-risk part. Sources: Kemerer and Paulk 2009,
-    Boehm 1988.
-
-Two more conflicts have a fixed resolution:
-
--   **Links against local text:** A link makes the reader decide whether to
-    leave the page. A pointer that names the content of its target removes that
-    decision. Source: DeStefano and LeFevre 2007 (review).
--   **Much highlighting against none:** Bold only on lead-in keys gives a scan
-    index. All the body text keeps equal weight. Source: Lorch 1989.
+-   **R29**, system-specific text only: Generic boilerplate adds reading cost
+    without narrowing the design space, and specifications document target
+    behavior rather than commit history. Sources: Harp and Mayer 1998
+    (experiment). Forward and Lethbridge 2002 (field study).
+-   **R30**, direct statements, not stagecraft: Concrete consequences carry
+    weight without rhetorical announcements or sentence-initial adverbs
+    ("Notably") overrepresented in machine prose. Sources: Morkes and Nielsen
+    1997 (experiment). Brown and others 2024 (field study).
+-   **R31**, named sources and bounded scope: Statistical AI-text detectors
+    misclassified over 60% of non-native English writing. Verification checks
+    primary citations and target-system bounds rather than authorship guesses.
+    Source: Liang and others 2023 (experiment).
+-   **R32**, plain copulas and literal modifiers: Plain verbs and literal
+    modifiers prevent dictionary and machine-translation category errors.
+    Source: ASD-STE100 practice.
 
 ## Limits of the evidence
 
--   **Subjects:** Most experiments measured students or general readers. They
-    did not measure engineers who review design documents.
--   **Numbers:** The studies support the direction of each limit. The exact
-    limits (25 words, 5 columns, 9 nodes, 400 words) are practical choices.
--   **Source list:** The list comes from the research review that was written
-    with these rules. Read a source before you cite it in a document.
+-   **Populations:** Many controlled reading studies tested students or general
+    readers rather than staff engineers reviewing distributed-system specs.
+-   **Thresholds:** Empirical results establish the direction of each rule,
+    while exact caps (25 words, 5 columns, 9 boxes, 400 words) are practical
+    engineering cutoffs. Read primary papers directly before citing them in
+    external publications.

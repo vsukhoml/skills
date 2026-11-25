@@ -16,13 +16,20 @@ import pathlib
 import re
 import sys
 
+MIN_PRIMARY_NODES = 3
 MAX_PRIMARY_NODES = 9
+MIN_SEQUENCE_ACTORS = 3
 MAX_SEQUENCE_ACTORS = 5
 MAX_EDGES = 12
+MAX_NODE_DEGREE = 4
 MAX_LABEL_WORDS = 5
 MAX_SUBITEMS = 5
 MAX_SEMANTIC_COLORS = 5
-MAX_UNBRANCHED_LR_NODES = 4
+MAX_LR_RANKS = 3
+MAX_LR_NODES = 6
+MAX_SEQ_FRAGMENT_DEPTH = 1
+MAX_COMPOSITE_STATE_DEPTH = 1
+MAX_SUBGRAPH_DEPTH = 2
 
 _FENCE_OPEN = re.compile(r'^(\s*)(`{3,}|~{3,})\s*([\w+-]*).*$')
 _LINT_OFF = re.compile(r'<!--\s*diagram-lint:\s*off\s*-->', re.IGNORECASE)
@@ -57,6 +64,21 @@ _ALPHANUM_ID = re.compile(
     r'\b(?:REQ|INV|ASM|DEC|OPT|OQ|ITEM|MOD|SYS|COMP|ERR|STEP)[-_]\d+[A-Za-z]?\b'
     r'|^\s*[A-Z]{1,4}\d{1,3}\s*[:.-]\s+'
 )
+_VAGUE_EDGE_WORDS = frozenset((
+    'data',
+    'info',
+    'information',
+    'request',
+    'response',
+    'reply',
+    'payload',
+    'message',
+    'call',
+    'input',
+    'output',
+    'result',
+    'event',
+))
 _COMMA_LIST = re.compile(r'[^,]+,\s+[^,]+,\s+[^,]+|[^,]+,\s+(?:and|or)\s+[^,]+')
 _EMOJI = re.compile(r'[\U0001f300-\U0001faff\u2600-\u26ff\u2700-\u27bf]')
 _MERMAID_ICON_ATTR = re.compile(r'@\{\s*icon\s*:', re.IGNORECASE)
@@ -71,17 +93,23 @@ _MERMAID_SUBGRAPH = re.compile(
     r'|"([^"]+)")?',
     re.IGNORECASE,
 )
+_MERMAID_SEQ_OPEN = re.compile(
+    r'^\s*(?:alt|opt|loop|par|critical|break|rect)\b', re.IGNORECASE
+)
+_MERMAID_END = re.compile(r'^\s*end\b', re.IGNORECASE)
+_MERMAID_STATE_OPEN = re.compile(r'^\s*state\b.*\{\s*$', re.IGNORECASE)
 _MERMAID_PARTICIPANT = re.compile(
     r'^\s*(?:participant|actor)\s+([A-Za-z0-9_.-]+)(?:\s+as\s+(.+))?$',
     re.IGNORECASE,
 )
 _MERMAID_SEQ_MSG = re.compile(
-    r'^\s*([A-Za-z0-9_.-]+)\s*(?:<<?--?>>?|--?>>?|--?[x)+-])\s*'
+    r'^\s*([A-Za-z0-9_.-]+)\s*(<<?--?>>?|--?>>?|--?[x)+-])([+-]?)\s*'
     r'([A-Za-z0-9_.-]+)\s*:\s*(.*)$'
 )
 _MERMAID_EDGE = re.compile(
-    r'(-->|==>|-\.->|<-->|---|-\.-)' r'(?:\|\s*"?([^"|]*)"?\s*\|)?'
+    r'(<-->|<-\.->|<==>|-->|==>|-\.->|---|-\.-)' r'(?:\|\s*"?([^"|]*)"?\s*\|)?'
 )
+_BIDIR_OR_UNDIR_OPS = frozenset(('<-->', '<-.->', '<==>', '---', '-.-'))
 _MERMAID_INLINE_EDGE_LABEL = re.compile(
     r'(?:--\s*"?([^"\n-]+?)"?\s*-->|-\.\s*"?([^"\n.]+?)"?\s*\.->|'
     r'==\s*"?([^"\n=]+?)"?\s*==>)'
@@ -112,14 +140,16 @@ _MERMAID_SKIP_KEYWORDS = frozenset((
     'style',
     'linkstyle',
     'click',
-    'accTitle',
-    'accDescr',
+    'acctitle',
+    'accdescr',
 ))
 
 _DOT_RANKDIR = re.compile(r'\brankdir\s*=\s*"?(LR|RL|TB|BT)"?', re.IGNORECASE)
+_DOT_SUBGRAPH_OPEN = re.compile(r'\bsubgraph\b[^{]*\{', re.IGNORECASE)
 _DOT_EDGE = re.compile(
-    r'\b([A-Za-z_][A-Za-z0-9_]*)\s*-[->]\s*([A-Za-z_][A-Za-z0-9_]*)'
+    r'\b([A-Za-z_][A-Za-z0-9_]*)\s*(-[->])\s*([A-Za-z_][A-Za-z0-9_]*)'
 )
+_DOT_DIR_BAD = re.compile(r'\bdir\s*=\s*"?(?:both|none)"?', re.IGNORECASE)
 _DOT_LABEL = re.compile(r'\blabel\s*=\s*"((?:[^"\\]|\\.)*)"')
 _DOT_NODE_STMT = re.compile(
     r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*\[([^\]]*)\]\s*;?\s*$'
@@ -134,14 +164,19 @@ _NEUTRAL_COLORS = frozenset((
     '#fff',
     '#ffffff',
     '#f8f9fa',
+    '#f5f5f5',
     '#f1f3f4',
     '#fafafa',
     '#eeeeee',
+    '#e8eaed',
+    '#dadce0',
     'white',
     'none',
     'transparent',
     'lightgrey',
     'lightgray',
+    'grey',
+    'gray',
 ))
 _RAW_RED_COLORS = frozenset((
     'red',
@@ -163,13 +198,7 @@ _RAW_GREEN_COLORS = frozenset((
 
 @dataclasses.dataclass(frozen=True)
 class Finding:
-  """One diagram lint violation.
-
-  Attributes:
-    line: 1-based line number in the checked file.
-    rule: Rule identifier such as D1 or D5.
-    message: Actionable explanation of the violation.
-  """
+  """One diagram lint violation."""
 
   line: int
   rule: str
@@ -178,13 +207,7 @@ class Finding:
 
 @dataclasses.dataclass(frozen=True)
 class _CodeBlock:
-  """One fenced code block extracted from a Markdown document.
-
-  Attributes:
-    line: 1-based starting line of the opening fence.
-    lang: Lowercase info-string language tag.
-    lines: Raw lines inside the code block.
-  """
+  """One fenced code block extracted from a Markdown document."""
 
   line: int
   lang: str
@@ -204,6 +227,29 @@ def _clean_label_line(raw_line: str) -> str:
 def _count_words(text: str) -> int:
   """Counts words in a cleaned diagram label."""
   return len(_WORD.findall(text))
+
+
+def _longest_dag_ranks(
+    adj: dict[str, set[str]], primary_nodes: set[str]
+) -> int:
+  """Returns the longest simple directed path length in nodes (1-based)."""
+  if not primary_nodes:
+    return 0
+  memo: dict[str, int] = {}
+
+  def dfs(node: str, visiting: set[str]) -> int:
+    if node in memo:
+      return memo[node]
+    visiting.add(node)
+    best = 1
+    for nxt in adj.get(node, ()):
+      if nxt in primary_nodes and nxt not in visiting:
+        best = max(best, 1 + dfs(nxt, visiting))
+    visiting.remove(node)
+    memo[node] = best
+    return best
+
+  return max(dfs(n, set()) for n in primary_nodes)
 
 
 def _check_label(
@@ -228,8 +274,13 @@ def _check_label(
         )
     )
   parts = [p.strip() for p in _HTML_BR.split(stripped) if p.strip()]
+  is_sublist = False
   if len(parts) > 1 and kind == 'node':
     bullet_parts = parts[1:]
+    is_sublist = all(
+        _BULLET_PREFIX.match(p) or _STEP_PREFIX.match(p) or p.startswith('- ')
+        for p in bullet_parts
+    )
     if len(bullet_parts) > MAX_SUBITEMS:
       findings.append(
           Finding(
@@ -249,6 +300,19 @@ def _check_label(
               'with <br/> so Mermaid parsers do not break',
           )
       )
+  if len(parts) > 1 and not is_sublist:
+    combined = ' '.join(_clean_label_line(p) for p in parts)
+    total_words = _count_words(combined)
+    if total_words > MAX_LABEL_WORDS:
+      findings.append(
+          Finding(
+              line_no,
+              'D5',
+              f'multi-line {kind} label has {total_words} words '
+              f'(limit {MAX_LABEL_WORDS}): use 1 to 3 words (max 5) or '
+              'bulleted "• " sub-items',
+          )
+      )
   for part in parts:
     if kind == 'node' and _COMMA_LIST.search(part):
       findings.append(
@@ -261,6 +325,25 @@ def _check_label(
       )
     cleaned = _clean_label_line(part)
     words = _count_words(cleaned)
+    if kind == 'edge':
+      if _STEP_PREFIX.match(part) and words == 0:
+        findings.append(
+            Finding(
+                line_no,
+                'D5',
+                f'bare step number "{part}" on arrow: add a 1 to 3 word '
+                'verb and noun (for example "1. Sign challenge")',
+            )
+        )
+      elif words == 1 and cleaned.lower() in _VAGUE_EDGE_WORDS:
+        findings.append(
+            Finding(
+                line_no,
+                'D5',
+                f'vague 1-word arrow label "{cleaned}": use a concrete '
+                'verb + noun or payload name',
+            )
+        )
     if words > MAX_LABEL_WORDS:
       findings.append(
           Finding(
@@ -274,9 +357,12 @@ def _check_label(
 
 
 def _check_colors(
-    lines: Sequence[str], start_line: int, findings: list[Finding]
+    lines: Sequence[str],
+    start_line: int,
+    node_count: int,
+    findings: list[Finding],
 ) -> None:
-  """Checks semantic color count and red-green collisions (D10)."""
+  """Checks semantic color count, rainbow singletons, and red-green pairs."""
   semantic_colors: set[str] = set()
   has_raw_red = False
   has_raw_green = False
@@ -299,7 +385,17 @@ def _check_colors(
             first_color_line,
             'D10',
             f'diagram uses {len(semantic_colors)} semantic fill colors '
-            f'(limit {MAX_SEMANTIC_COLORS}): group into 3 to 5 categories',
+            f'(limit {MAX_SEMANTIC_COLORS}): group into 1 to 4 categories',
+        )
+    )
+  elif node_count >= 3 and len(semantic_colors) >= node_count:
+    findings.append(
+        Finding(
+            first_color_line,
+            'D10',
+            f'every box uses a unique color ({len(semantic_colors)} fills for '
+            f'{node_count} boxes): use 1 to 4 shared category fills plus '
+            'neutral context nodes',
         )
     )
   if has_raw_red and has_raw_green:
@@ -312,6 +408,28 @@ def _check_colors(
             'vermilion (#FCE8E6/#C5221F) with non-color cues',
         )
     )
+
+
+def _check_degrees(
+    out_deg: dict[str, int],
+    in_deg: dict[str, int],
+    start_line: int,
+    findings: list[Finding],
+) -> None:
+  """Flags hub nodes exceeding MAX_NODE_DEGREE in fan-out or fan-in."""
+  for node in sorted(set(out_deg) | set(in_deg)):
+    fo = out_deg.get(node, 0)
+    fi = in_deg.get(node, 0)
+    if fo > MAX_NODE_DEGREE or fi > MAX_NODE_DEGREE:
+      findings.append(
+          Finding(
+              start_line,
+              'D4',
+              f'node "{node}" has fan-out {fo} / fan-in {fi} '
+              f'(limit {MAX_NODE_DEGREE}): group shared targets in a '
+              'subgraph or split the diagram',
+          )
+      )
 
 
 def _lint_mermaid(
@@ -327,7 +445,12 @@ def _lint_mermaid(
   nodes: set[str] = set()
   participants: set[str] = set()
   out_degree: dict[str, int] = {}
+  in_degree: dict[str, int] = {}
+  adj: dict[str, set[str]] = {}
   edge_count = 0
+  seq_depth = 0
+  subgraph_depth = 0
+  state_depth = 0
 
   for offset, raw in enumerate(lines):
     line_no = start_line + offset
@@ -339,9 +462,9 @@ def _lint_mermaid(
           Finding(
               line_no,
               'D9',
-              'Mermaid "@{ icon: ... }" breaks in GitHub and many Markdown '
-              'renderers: use shapes and colors inline, or render locally '
-              'with alt-text source',
+              'Mermaid "@{ icon: ... }" breaks in GitHub, GitLab, and common '
+              'Markdown renderers: use shapes/colors inline, or render locally '
+              'to PNG with Alt-text source',
           )
       )
     if inline_markdown and _EMOJI.search(stripped):
@@ -349,8 +472,9 @@ def _lint_mermaid(
           Finding(
               line_no,
               'D9',
-              'Unicode emoji in inline Mermaid renders inconsistently across '
-              'headless renderers: use shapes, colors, or [TAG] prefixes',
+              'Unicode emoji in inline Mermaid renders as missing boxes in '
+              'headless CLI and Graphviz fonts: use shapes, colors, or [TAG] '
+              'prefixes',
           )
       )
     if not kind:
@@ -361,6 +485,22 @@ def _lint_mermaid(
       continue
 
     if kind == 'sequencediagram':
+      if _MERMAID_SEQ_OPEN.match(stripped):
+        seq_depth += 1
+        if seq_depth > MAX_SEQ_FRAGMENT_DEPTH:
+          findings.append(
+              Finding(
+                  line_no,
+                  'D1',
+                  f'nested sequence fragment (depth {seq_depth}, limit '
+                  f'{MAX_SEQ_FRAGMENT_DEPTH}): flatten or move branch rules '
+                  'to a table below',
+              )
+          )
+        continue
+      if _MERMAID_END.match(stripped):
+        seq_depth = max(0, seq_depth - 1)
+        continue
       part = _MERMAID_PARTICIPANT.match(stripped)
       if part:
         participants.add(part.group(1))
@@ -370,18 +510,57 @@ def _lint_mermaid(
       msg = _MERMAID_SEQ_MSG.match(stripped)
       if msg:
         participants.add(msg.group(1))
-        participants.add(msg.group(2))
+        participants.add(msg.group(4))
         edge_count += 1
-        _check_label(msg.group(3), line_no, 'edge', True, findings)
+        if msg.group(2).startswith('<'):
+          findings.append(
+              Finding(
+                  line_no,
+                  'D4',
+                  'bidirectional sequence arrow: draw separate request and '
+                  'reply messages',
+              )
+          )
+        _check_label(msg.group(5), line_no, 'edge', True, findings)
       continue
+
+    if kind.startswith('statediagram'):
+      if _MERMAID_STATE_OPEN.match(stripped):
+        state_depth += 1
+        if state_depth > MAX_COMPOSITE_STATE_DEPTH:
+          findings.append(
+              Finding(
+                  line_no,
+                  'D1',
+                  f'nested composite state (depth {state_depth}, limit '
+                  f'{MAX_COMPOSITE_STATE_DEPTH}): cap superstates at 1 level',
+              )
+          )
+        continue
+      if stripped == '}':
+        state_depth = max(0, state_depth - 1)
+        continue
 
     sub = _MERMAID_SUBGRAPH.match(stripped)
     if sub:
+      subgraph_depth += 1
+      if subgraph_depth > MAX_SUBGRAPH_DEPTH:
+        findings.append(
+            Finding(
+                line_no,
+                'D8',
+                f'subgraph nesting depth {subgraph_depth} '
+                f'(limit {MAX_SUBGRAPH_DEPTH}): split into a child diagram',
+            )
+        )
       if sub.group(1):
         subgraph_ids.add(sub.group(1))
       sub_label = sub.group(2) or sub.group(3) or ''
       if sub_label:
         _check_label(sub_label, line_no, 'subgraph', True, findings)
+      continue
+    if _MERMAID_END.match(stripped):
+      subgraph_depth = max(0, subgraph_depth - 1)
       continue
 
     first_word = stripped.split()[0].lower().rstrip(':')
@@ -401,17 +580,35 @@ def _lint_mermaid(
 
     edges_on_line = list(_MERMAID_EDGE.finditer(stripped))
     if edges_on_line:
-      edge_count += len(edges_on_line)
-      left_tokens = re.findall(
-          r'\b([A-Za-z_][A-Za-z0-9_.-]*)\b',
-          stripped[: edges_on_line[0].start()],
-      )
-      if left_tokens:
-        src = left_tokens[0]
-        if src.lower() not in _MERMAID_SKIP_KEYWORDS:
-          nodes.add(src)
-          out_degree[src] = out_degree.get(src, 0) + 1
+      if kind.startswith('statediagram') and ':' in stripped:
+        colon_lbl = stripped.split(':', 1)[1].strip()
+        if colon_lbl:
+          _check_label(colon_lbl, line_no, 'edge', True, findings)
+
+      def _extract_amp_nodes(segment: str) -> list[str]:
+        head = segment.split(':', 1)[0]
+        head = re.sub(r'\[[^\]]*\]|\([^\)]*\)|\{[^\}]*\}', ' ', head)
+        head = re.sub(r':::[\w-]+', ' ', head)
+        result: list[str] = []
+        for part_seg in head.split('&'):
+          toks = re.findall(r'\b([A-Za-z_][A-Za-z0-9_.-]*)\b', part_seg)
+          if toks and toks[0].lower() not in _MERMAID_SKIP_KEYWORDS:
+            result.append(toks[0])
+        return result
+
+      prev_srcs = _extract_amp_nodes(stripped[: edges_on_line[0].start()])
+      nodes.update(prev_srcs)
       for idx, edge_match in enumerate(edges_on_line):
+        op = edge_match.group(1)
+        if op in _BIDIR_OR_UNDIR_OPS:
+          findings.append(
+              Finding(
+                  line_no,
+                  'D4',
+                  f'bidirectional or undirected edge "{op}": draw 1 initiator '
+                  'arrow or 2 labeled request/reply arrows',
+              )
+          )
         if edge_match.group(2):
           _check_label(edge_match.group(2), line_no, 'edge', True, findings)
         seg_end = (
@@ -419,27 +616,49 @@ def _lint_mermaid(
             if idx + 1 < len(edges_on_line)
             else len(stripped)
         )
-        right_tokens = re.findall(
-            r'\b([A-Za-z_][A-Za-z0-9_.-]*)\b',
-            stripped[edge_match.end() : seg_end],
-        )
-        if right_tokens:
-          dst = right_tokens[0]
-          if dst.lower() not in _MERMAID_SKIP_KEYWORDS:
-            nodes.add(dst)
+        dsts = _extract_amp_nodes(stripped[edge_match.end() : seg_end])
+        nodes.update(dsts)
+        pair_count = max(1, len(prev_srcs) * len(dsts))
+        edge_count += pair_count
+        for s_node in prev_srcs:
+          for d_node in dsts:
+            out_degree[s_node] = out_degree.get(s_node, 0) + 1
+            in_degree[d_node] = in_degree.get(d_node, 0) + 1
+            adj.setdefault(s_node, set()).add(d_node)
+        if dsts:
+          prev_srcs = dsts
 
   primary_nodes = nodes - subgraph_ids
-  if kind == 'sequencediagram' and len(participants) > MAX_SEQUENCE_ACTORS:
-    findings.append(
-        Finding(
-            start_line,
-            'D4',
-            f'sequence diagram has {len(participants)} participants '
-            f'(limit {MAX_SEQUENCE_ACTORS}): split by phase or subsystem',
-        )
-    )
-  if kind in ('flowchart', 'graph'):
-    if len(primary_nodes) > MAX_PRIMARY_NODES:
+  if kind == 'sequencediagram':
+    if 0 < len(participants) < MIN_SEQUENCE_ACTORS:
+      findings.append(
+          Finding(
+              start_line,
+              'D2',
+              f'sequence diagram has only {len(participants)} participants '
+              f'(minimum {MIN_SEQUENCE_ACTORS}): use prose or a numbered list',
+          )
+      )
+    elif len(participants) > MAX_SEQUENCE_ACTORS:
+      findings.append(
+          Finding(
+              start_line,
+              'D4',
+              f'sequence diagram has {len(participants)} participants '
+              f'(limit {MAX_SEQUENCE_ACTORS}): split by phase or subsystem',
+          )
+      )
+  if kind in ('flowchart', 'graph') or kind.startswith('statediagram'):
+    if 0 < len(primary_nodes) < MIN_PRIMARY_NODES:
+      findings.append(
+          Finding(
+              start_line,
+              'D2',
+              f'diagram has only {len(primary_nodes)} boxes '
+              f'(minimum {MIN_PRIMARY_NODES}): use prose or a list instead',
+          )
+      )
+    elif len(primary_nodes) > MAX_PRIMARY_NODES:
       findings.append(
           Finding(
               start_line,
@@ -449,16 +668,18 @@ def _lint_mermaid(
               'split stages into child diagrams',
           )
       )
-    has_branching = any(deg > 1 for deg in out_degree.values())
+    _check_degrees(out_degree, in_degree, start_line, findings)
+    ranks = _longest_dag_ranks(adj, primary_nodes)
     if direction in ('LR', 'RL') and (
-        len(primary_nodes) > MAX_UNBRANCHED_LR_NODES or has_branching
+        ranks > MAX_LR_RANKS or len(primary_nodes) > MAX_LR_NODES
     ):
       findings.append(
           Finding(
               start_line,
               'D3',
-              f'horizontal "{direction}" layout with {len(primary_nodes)} '
-              'boxes or branching clips in portrait docs: use TD/TB instead',
+              f'horizontal "{direction}" layout spans {ranks} ranks / '
+              f'{len(primary_nodes)} boxes (limits {MAX_LR_RANKS} ranks, '
+              f'{MAX_LR_NODES} boxes): use TD/TB instead',
           )
       )
   if edge_count > MAX_EDGES:
@@ -470,7 +691,10 @@ def _lint_mermaid(
             'group shared targets or split into overview + sub-diagrams',
         )
     )
-  _check_colors(lines, start_line, findings)
+  n_count = (
+      len(participants) if kind == 'sequencediagram' else len(primary_nodes)
+  )
+  _check_colors(lines, start_line, n_count, findings)
   return findings
 
 
@@ -479,14 +703,46 @@ def _lint_dot(lines: Sequence[str], start_line: int) -> list[Finding]:
   findings: list[Finding] = []
   nodes: set[str] = set()
   out_degree: dict[str, int] = {}
+  in_degree: dict[str, int] = {}
+  adj: dict[str, set[str]] = {}
   edge_count = 0
   rankdir = 'TB'
+  subgraph_depth = 0
+  brace_stack: list[bool] = []
 
   for offset, raw in enumerate(lines):
     line_no = start_line + offset
     stripped = raw.strip()
     if not stripped or stripped.startswith('//') or stripped.startswith('#'):
       continue
+    if _DOT_SUBGRAPH_OPEN.search(stripped):
+      subgraph_depth += 1
+      brace_stack.append(True)
+      if subgraph_depth > MAX_SUBGRAPH_DEPTH:
+        findings.append(
+            Finding(
+                line_no,
+                'D8',
+                f'DOT cluster nesting depth {subgraph_depth} '
+                f'(limit {MAX_SUBGRAPH_DEPTH}): split into a child diagram',
+            )
+        )
+    else:
+      for ch in stripped:
+        if ch == '{':
+          brace_stack.append(False)
+        elif ch == '}' and brace_stack:
+          if brace_stack.pop():
+            subgraph_depth = max(0, subgraph_depth - 1)
+    if _DOT_DIR_BAD.search(stripped):
+      findings.append(
+          Finding(
+              line_no,
+              'D4',
+              'DOT bidirectional or undirected dir attribute: use directed '
+              'initiator edges',
+          )
+      )
     rd_match = _DOT_RANKDIR.search(stripped)
     if rd_match:
       rankdir = rd_match.group(1).upper()
@@ -502,16 +758,36 @@ def _lint_dot(lines: Sequence[str], start_line: int) -> list[Finding]:
     if edge_matches:
       edge_count += len(edge_matches)
       for em in edge_matches:
-        src, dst = em.group(1), em.group(2)
+        src, op, dst = em.group(1), em.group(2), em.group(3)
+        if op == '--':
+          findings.append(
+              Finding(
+                  line_no,
+                  'D4',
+                  'undirected "--" edge in DOT: use directed "->" edges',
+              )
+          )
         if not src.startswith('cluster_'):
           nodes.add(src)
           out_degree[src] = out_degree.get(src, 0) + 1
         if not dst.startswith('cluster_'):
           nodes.add(dst)
+          in_degree[dst] = in_degree.get(dst, 0) + 1
+        if not src.startswith('cluster_') and not dst.startswith('cluster_'):
+          adj.setdefault(src, set()).add(dst)
       for lbl in _DOT_LABEL.finditer(stripped):
         _check_label(lbl.group(1), line_no, 'edge', False, findings)
 
-  if len(nodes) > MAX_PRIMARY_NODES:
+  if 0 < len(nodes) < MIN_PRIMARY_NODES:
+    findings.append(
+        Finding(
+            start_line,
+            'D2',
+            f'DOT diagram has only {len(nodes)} primary nodes '
+            f'(minimum {MIN_PRIMARY_NODES}): use prose or a list instead',
+        )
+    )
+  elif len(nodes) > MAX_PRIMARY_NODES:
     findings.append(
         Finding(
             start_line,
@@ -529,19 +805,21 @@ def _lint_dot(lines: Sequence[str], start_line: int) -> list[Finding]:
             'group shared targets or split into sub-diagrams',
         )
     )
-  has_branching = any(deg > 1 for deg in out_degree.values())
+  _check_degrees(out_degree, in_degree, start_line, findings)
+  ranks = _longest_dag_ranks(adj, nodes)
   if rankdir in ('LR', 'RL') and (
-      len(nodes) > MAX_UNBRANCHED_LR_NODES or has_branching
+      ranks > MAX_LR_RANKS or len(nodes) > MAX_LR_NODES
   ):
     findings.append(
         Finding(
             start_line,
             'D3',
-            f'horizontal rankdir={rankdir} with {len(nodes)} nodes or '
-            'branching clips in portrait docs: use rankdir=TB',
+            f'horizontal rankdir={rankdir} spans {ranks} ranks / '
+            f'{len(nodes)} nodes (limits {MAX_LR_RANKS} ranks, '
+            f'{MAX_LR_NODES} nodes): use rankdir=TB',
         )
     )
-  _check_colors(lines, start_line, findings)
+  _check_colors(lines, start_line, len(nodes), findings)
   return findings
 
 

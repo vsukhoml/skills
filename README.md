@@ -24,7 +24,7 @@ flowchart LR
 
 ---
 
-## Skill Catalog (47 Skills)
+## Skill Catalog (49 Skills)
 
 ### 1. Pre-Code Engineering Synthesis (`specs` Suite — 11 Skills)
 
@@ -100,12 +100,14 @@ flowchart LR
 | [harden-build](harden-build/SKILL.md) | Production ELF mitigations (`PIE`, Full `RELRO`, `FORTIFY=3`, `CET`/`PAC+BTI`, LTO `CFI`), `scripts/check-elf.sh`, fuzzing, MC/DC, mutation, and formal proofs. |
 | [web-hardening](web-hardening/SKILL.md) | Centralized HTTP security headers, session-bound CSRF with explicit exemption tables, hash-allowlisted CSP + Trusted Types, XSSI, and BREACH scoping. |
 
-### 7. Technical Writing & Domain Reference Tools (3 Skills)
+### 7. Technical Writing & Domain Reference Tools (5 Skills)
 
 | Skill | Role & Scope |
 | --- | --- |
-| [writing-tech-docs](writing-tech-docs/SKILL.md) | 32 numbered rules (`R1`–`R32`) for decision docs (specs, ADRs, RFCs) and developer/operator docs (READMEs, runbooks, references), structure-first existing-doc revisions, plus `scripts/doc_lint.py`. |
-| [tech-docs-diagrams](tech-docs-diagrams/SKILL.md) | 10 numbered rules (`D1`–`D10`) for source-backed Mermaid and Graphviz DOT diagrams (spatial value, cognitive-load limits, ID-free labels, Okabe-Ito red-green-safe palette), plus `scripts/diagram_lint.py`. |
+| [writing-tech-docs](writing-tech-docs/SKILL.md) | 32 numbered rules (`R1`–`R32`) for decision docs (specs, ADRs, RFCs) and developer/operator docs (READMEs, runbooks, references), scoped structural restructuring, native Google Docs code blocks, plus `scripts/doc_lint.py`. |
+| [tech-docs-diagrams](tech-docs-diagrams/SKILL.md) | 11 numbered rules (`D1`–`D11`) for source-backed Mermaid and Graphviz DOT diagrams (spatial value, cognitive-load limits, parent-child decomposition, ID-free labels, Okabe-Ito red-green-safe palette), plus `scripts/diagram_lint.py`. |
+| [tech-docs-comments](tech-docs-comments/SKILL.md) | 14 numbered rules (`C1`–`C14`) for Google Docs margin comments and Suggesting-mode triage (`282 px` sidebar geometry, anchor safety, selective resolution), plus `scripts/comment_lint.py`. |
+| [tech-docs-review-round](tech-docs-review-round/SKILL.md) | 10 numbered rules (`RR1`–`RR10`) for daily or iterative Google Docs review rounds (watchlist + 3-day Drive discovery, cumulative `ack` diffs, staleness radar, 3-axis action queues), plus `scripts/review_round_collect.py`. |
 | [schwab-api](schwab-api/SKILL.md) | Three-legged OAuth 2.0, account/order REST endpoints, WebSocket streaming, and TypeScript schemas for the Charles Schwab Trading API. |
 
 ---
@@ -130,7 +132,9 @@ Several skills include zero-dependency CLI tools for deterministic verification:
 | Script | Purpose |
 | --- | --- |
 | [writing-tech-docs/scripts/doc_lint.py](writing-tech-docs/scripts/doc_lint.py) | Lints Markdown against measurable `R1`–`R32` prose/table/code/link rules and `--compare ORIG REVISED` (`--allow-restructure`) preservation limits. |
-| [tech-docs-diagrams/scripts/diagram_lint.py](tech-docs-diagrams/scripts/diagram_lint.py) | Lints Markdown, `.mmd`, and `.dot` files against `D1`–`D10` source-backed diagram, capacity, label, and colorblind-safe palette rules. |
+| [tech-docs-diagrams/scripts/diagram_lint.py](tech-docs-diagrams/scripts/diagram_lint.py) | Lints Markdown, `.mmd`, and `.dot` files against `D1`–`D11` source-backed diagram, capacity, label, and colorblind-safe palette rules. |
+| [tech-docs-comments/scripts/comment_lint.py](tech-docs-comments/scripts/comment_lint.py) | Lints staged JSON or Markdown Google Docs comments and Triage replies against `C1`–`C14` payload, folding, prefix, anchor, emoji, and mention rules. |
+| [tech-docs-review-round/scripts/review_round_collect.py](tech-docs-review-round/scripts/review_round_collect.py) | Read-only Google Drive/Docs/Calendar collector computing cumulative `ack` diffs, reply sentiment, business-day/OOO staleness warnings, and bundled lint runs. |
 | [ui-colors/scripts/oklch_palette.py](ui-colors/scripts/oklch_palette.py) | Generates perceptual OKLCh ramps, verifies WCAG 2.2 + APCA contrast & sRGB gamut clamping, and emits Rust/C++/Go/CSS constants. |
 | [harden-audit/scripts/audit.sh](harden-audit/scripts/audit.sh) | Read-only Linux host, listener, firewall, sshd, sysctl, SUID, ELF mitigation, and Docker security evidence collector (`--deep` optional). |
 | [harden-build/scripts/check-elf.sh](harden-build/scripts/check-elf.sh) | Audits ELF binaries and shared libraries for `PIE`, Full `RELRO`, `NX`, `FORTIFY`, `CET`/`PAC+BTI`, `CFI`, and leaked sanitizer runtimes. |

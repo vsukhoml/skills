@@ -1,28 +1,15 @@
 # Plain English for international readers
 
-Use this guide with the rules for plain English (R25 to R28) and for grounded,
-non-synthetic prose (R29 to R32). The reader reads English as a second
-language, or reads a machine translation. That reader translates one sentence at
-a time and finds unknown words in a dictionary. Each word must have its
-dictionary meaning. Each sentence must have complete grammar.
+Non-native English readers and machine translators parse one sentence at a time
+using primary dictionary meanings. Keep established technical concepts, numbers,
+and conditions intact while making surrounding words and grammar plain and
+unambiguous (R25 to R32).
 
-Plain English does not remove technical content. Keep each technical term,
-number, and condition. Change only the words around them. Use active voice.
+## Words, domain jargon, and overloaded English terms
 
-## Words
-
-Decide the terms before you draft. The rule is common words, one term (R25).
-
-1.  **List the things:** List the components, states, messages, and actions that
-    the document names.
-2.  **Select one term for each thing:** Use the term from the source code or
-    from the standard of the field.
-3.  **Define each term one time:** Put the definition at the first use, in 10
-    words or fewer.
-4.  **Search for the other words:** After the draft, search for the terms that
-    you did not select. Replace each one.
-
-Table 1 shows the word groups that writers mix most.
+Table 1 lists synonym groups that writers mix by accident. Pick one word per
+concept across the document unless two words name distinct defined mechanisms
+(R25).
 
 Meaning                        | Words that writers mix
 ------------------------------ | --------------------------------------------
@@ -33,13 +20,30 @@ Take something away            | delete, remove, erase, clear, drop, wipe
 Values that control behavior   | configuration, settings, options, parameters
 The party that sends a request | host, client, caller, user, application
 
-*Table 1: Select one word in each row for the full document.*
+*Table 1: Select one word per row across the full document.*
 
-If two words in a row have different technical meanings in your system, define
-both words.
+Plain language never bans established technical jargon of the target domain
+(such as "nonce", "quorum", "idempotent", or "attestation"). However, when
+domain jargon reuses an everyday English word, readers outside that
+sub-specialty or using a dictionary can misread it as the ordinary word. Table 2
+shows how to disambiguate overloaded English jargon on first use and avoid
+dual-sense collisions (R25).
 
-Some common words have two meanings. Table 2 gives a word with one meaning for
-each of them.
+Jargon word | Everyday reading | Unambiguous first use and qualifier
+----------- | ---------------- | -----------------------------------
+"seal"      | close or approve | Pair as "TPM-sealed key" (*seal*: bind to PCR state).
+"lease"     | rental contract  | Pair as "leader lease" (time-bounded lock epoch).
+"witness"   | human observer   | Pair as "consensus witness node" or "log witness".
+"tombstone" | grave marker     | Pair as "deletion tombstone record" on first use.
+"ticket"    | bug or pass      | Write "session ticket" for auth and "bug" for issues.
+"claim"     | assertion        | Write "JWT claim field", and use "statement" for prose.
+
+*Table 2: Never use an overloaded word in both its technical sense and its
+ordinary English sense in the same document.*
+
+Table 3 lists common English words with multiple meanings that `doc_lint.py`
+cannot flag automatically. Replace each with its single-meaning word when
+reviewing prose.
 
 Word    | Two meanings                | Write
 ------- | --------------------------- | --------------------------
@@ -52,46 +56,19 @@ Word    | Two meanings                | Write
 "last"  | Final, or previous          | "final" or "previous"
 "right" | Correct, or direction       | "correct"
 
-*Table 2: A reader with a dictionary cannot know which meaning you intend.*
+*Table 3: Replace multi-meaning connectors so readers never guess between time
+and cause.*
 
-The lint script does not check the words in Table 2, because each word is
-correct in one of its meanings. Check them when you read the draft.
-
-The lint script has a longer list of words and phrases, with a replacement for
-each one. This command prints the list:
+Run `doc_lint.py --words` to inspect the full automated replacement table:
 
 ```bash
 python3 {skill_dir}/scripts/doc_lint.py --words
 ```
 
-## Literal language
-
-A phrase is literal if the dictionary meaning of each word gives the meaning of
-the phrase. The rule is literal language (R26). These 7 types of text are not
-literal:
-
--   **Idioms:** Write "by default", not "out of the box". Write "internally",
-    not "under the hood".
--   **Phrasal verbs:** A verb with a small word such as "up", "out", or "off"
-    often has a new meaning. Write "remove", not "get rid of".
--   **Latin abbreviations:** Write "for example" and "that is". Name the items
-    of a list to its end, and do not write "etc.".
--   **Contractions:** Write "do not", "cannot", and "it is".
--   **Symbols as words:** Write "and", "or", "with", and "about" as words. Do
-    not write "&", "/", "w/", or "~" in their place.
--   **References to one culture:** Do not refer to sports, seasons, holidays, or
-    local history. Give the months, not "the third quarter".
--   **Humor and emphasis:** Do not use jokes, irony, rhetorical questions, or
-    exclamation marks.
-
-A standard technical term stays, also if it has the form of a phrasal verb or an
-idiom. Examples are "rollback", "fallback", "handshake", and "boot".
-
 ## Grammar
 
-Complete grammar tells the reader the role of each word. The rule is complete
-and explicit grammar (R27). Table 3 shows the
-patterns that cause the most errors.
+Table 4 shows rewrites that remove structural ambiguity in complex sentences
+(R14, R27).
 
 Pattern                 | Before                                                  | After
 ----------------------- | ------------------------------------------------------- | -----
@@ -106,77 +83,53 @@ Use the positive form   | "Do not leave the port unlocked."                     
 Name the actor          | "The key is erased."                                    | The boot code erases the key.
 Use a one-word verb     | "The service has been restarted."                       | The service restarted.
 
-*Table 3: Each change adds a word or a sentence, and removes one possible wrong
-reading.*
+*Table 4: Complete grammar removes wrong parses for non-native readers.*
 
-Write in the active voice: the actor is the subject, and the verb states the
-action. The passive voice is correct in these 2 cases only:
+## Modal verbs and normative spec keywords
 
--   **Unknown actor:** "The log was deleted before the incident."
--   **Each possible actor:** "The command can be run from each directory."
+Outside formal or semi-formal specifications, "should", "may", "could", and
+"would" carry multiple meanings. Strongly prefer replacing them with a
+conditional imperative or one of the 6 fixed-meaning forms in R28 whenever
+possible, as shown in Table 5.
 
-In all other cases, find the actor in the source or in the draft. If the draft
-does not name the actor of an obligation, record an open item. The lint script
-reports each passive verb that has its actor after "by". It also reports a
-document in which more than 20% of the sentences are passive.
+Ambiguous modal   | Rewrite as conditional imperative or fixed meaning
+----------------- | --------------------------------------------------
+"should" / advice | "If the table exceeds 10 000 rows, run the batch command."
+"should" (claim)  | "must" (requirement) or "we expect" (unverified prediction).
+"may"             | "If debug mode is active, log the header", "can", or "might".
+"could"           | "can" (ability) or "might" (possibility).
+"would"           | "If the check fails, the device restarts."
 
-## Modal verbs, numbers, and dates
+*Table 5: Conditional imperatives state the exact trigger and action without
+hiding whether an item is required.*
 
-Each modal verb has one meaning in the document. The rule is fixed meanings and
-formats (R28). Table 4 gives the
-meanings.
+Formal and semi-formal specs that define normative keywords (for example citing
+RFC 2119 or a conventions section) can use "MUST", "SHOULD", and "MAY".
+Semi-formal specs can also introduce lowercase normative "must", "should", and
+"may", provided the chosen case stays consistent throughout.
 
-Word      | Meaning
---------- | -------------------------------------------------------
-must      | A requirement. A design that does not meet it is wrong.
-must not  | A prohibition.
-can       | An ability or a permission.
-might     | A possibility. The author does not know the result.
-will      | A fact about the future.
-we expect | A prediction that is not verified.
+## International numbers, dates, and machine translation
 
-*Table 4: Each word in the table has one meaning.*
+Format numbers and dates so they read identically across locales, and structure
+blocks so machine translators preserve meaning (R28):
 
-Advice has no word in Table 4. An opinion such as "we recommend" hides the
-reason. In a decision document, compare the options with stated criteria, and
-state the decision as the result (R24). In developer documentation, write the
-instruction with its condition: "If the disk is full, delete the oldest log."
-
-The words "should", "may", "could", and "would" are not in Table 4, because each
-of them has more than one meaning. For "would", state the condition: "If the
-check fails, the device restarts."
-
-These 7 formats keep numbers and dates the same in all countries:
-
--   **Digits:** Write a quantity of 2 or more as digits: 3 retries, 28 rules.
--   **Unit:** Write a number, a space, and the unit: 40 ms, 4 KiB.
--   **Prefix:** Use KiB and MiB for powers of 2. Use kB and MB for powers of 10.
--   **Thousands:** Group digits with a space: 10 000. A comma or a point means a
-    decimal separator in some countries.
--   **Range:** Write "from 3 to 7", not a dash between the numbers.
--   **Date and time:** Write 2031-04-09 and 14:30 UTC.
--   **Relative time:** Write "in version 3.2" or a date. Do not write
-    "currently", "recently", or "soon".
-
-## Text for machine translation
-
-Many readers translate a document with a program. These 4 habits keep the
-translation correct:
-
--   **Text outside images:** Explain each label of a diagram in the body text. A
-    translation program cannot read an image.
--   **Complete list items:** Do not start a sentence in the lead-in and end it
-    in the list items. The program translates each item alone.
--   **No invented abbreviations:** Do not create an abbreviation for one
-    document. The program cannot expand it.
--   **One spelling:** Use American spelling or British spelling in the full
-    document, not both.
+1.  **Digits and units:** Write quantities of 2 or more as digits separated from
+    units by a space (such as 3 retries or 40 ms). Use `KiB` for base-2 and `kB`
+    for base-10.
+2.  **Thousands and ranges:** Group thousands with spaces (`10 000`) rather than
+    locale-dependent commas or periods, and write prose ranges with "to"
+    (`3 to 7`).
+3.  **Absolute dates and times:** Write `2026-11-23` and `14:30 UTC` or a
+    release number (such as release 3.2), never "currently", "recently", or
+    "soon".
+4.  **Translation-safe blocks:** Explain every diagram label in body prose, and
+    keep each list item a complete clause rather than splitting sentences across
+    bullets. Avoid single-document coined acronyms and stick to one English
+    spelling variant.
 
 ## Synthetic patterns to remove
 
-Table 5 shows synthetic patterns that add length or drama without adding
-technical facts. The 4 rules for grounded, non-synthetic prose (R29 to R32)
-remove them.
+Table 6 shows synthetic stagecraft patterns removed by R29 to R32.
 
 Pattern           | Before                                               | After
 ----------------- | ---------------------------------------------------- | -----
@@ -191,5 +144,4 @@ Inflated copula   | "The gateway serves as the entry point."             | The g
 Moral modifier    | "The histogram gives an honest shape of latency."    | The histogram records 99.9% latency without loss.
 Trailing "-ing"   | "The daemon batches writes, underscoring stability." | The daemon batches writes and cuts disk writes by 60%.
 
-*Table 5: Each rewrite removes stagecraft and states the technical fact
-directly.*
+*Table 6: State the concrete system behavior directly without stagecraft.*

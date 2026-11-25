@@ -1,12 +1,12 @@
 # Developer and operator documentation
 
-Select a documentation page by the job of the reader, not by the source file
-layout. Separate current system behavior from proposed behavior. Give one
-supported procedure, and verify commands on a clean environment.
+Select a documentation page by the reader's job rather than the source-tree
+layout, give one supported procedure, and verify commands on a clean
+environment.
 
 ## Page types by reader job
 
-Table 1 selects the page form by the task of the reader.
+Table 1 selects the page form by the task of the reader (`--profile docs`).
 
 Page               | Reader job                        | Required content
 ------------------ | --------------------------------- | ------------------------------------------------------------------------
@@ -23,71 +23,54 @@ Release notes      | Assess user-visible changes       | Version, date, added or
 *Table 1: Do not mix learning, procedures, and exhaustive reference on one
 page.*
 
-Developer documentation uses the profile "Developer documentation" in Table 2
-of the skill file. Run the lint script with `--profile docs`.
-
-Create only the pages that the reader needs. Do not turn a request for one page
-into a full documentation site. Keep each procedure on one page, and link to
-that page from other pages. Each procedure has one home (R4).
+Create only the pages the reader needs rather than a full site, keep each
+procedure in one canonical page, and link to it elsewhere (R4).
 
 ## Catalogs and indexes
 
-A catalog row helps the reader to select one item. The page of the item holds
-the detail. Write each description cell with these 4 limits:
+A catalog row helps the reader choose one item while the item's own page holds
+the details:
 
 -   **One job:** State what the item does in at most 30 words.
--   **Selection facts only:** Keep the facts that separate the item from the
-    other rows. Move each other fact to the page of the item, and link to that
-    page. Each fact has one home (R4).
--   **Names that a reader searches for:** Keep product names and the names of
-    standards, because a reader finds the row with them. Move flags, file names,
-    and internal identifiers to the page of the item.
--   **Words between terms:** Write "and" or "or" between terms, not a slash.
-    The lint script reports a cell with 2 or more such slashes.
+-   **Selection facts only:** Keep only facts that separate the row from sibling
+    rows, linking to the item page for everything else (R4).
+-   **Searchable names:** Keep product and standard names in the row, moving
+    flags, file paths, and internal symbols to the item page.
+-   **Words between terms:** Write "and" or "or" instead of slashes between
+    words.
 
-In Revise mode, these limits are advice for the author, not edits. Replace
-symbols and slashes with words, and read the page of the item if a slash can
-mean "and" or "or". Do not remove a fact from a cell, and do not add text about
-when to select the item. Put each proposed shorter cell in the report.
+On narrow Revise runs, replace slashes and symbols with words, keep existing
+cell facts intact, and list proposed shorter cells in the report.
 
 ## Procedures and examples
 
-State prerequisites and required permissions before step 1. Use a numbered list
-if the order matters, and a bulleted list if the order does not matter.
+State prerequisites and required permissions before step 1, and order each step
+so context precedes action:
 
-Order each procedural step so that the reader sees the context before acting:
-
-1.  **Location first:** Name the directory, host, or menu before the action.
-2.  **Action second:** Start the action with an imperative verb, with one action
-    in each step.
+1.  **Location first:** Name the directory, host, or UI menu before the action,
+    identifying controls by visible label rather than position words ("above",
+    "on the right").
+2.  **Action second:** Start with an imperative verb, giving one action per step
+    (and prefixing optional steps with "Optional:").
 3.  **Result third:** State the expected output that confirms success before the
-    next step.
-4.  **Optional marker:** Start an optional step with "Optional:".
-5.  **Copyable commands:** Omit the shell prompt ("$" or "#") in commands that a
-    reader copies, replace secrets with uppercase placeholders, and define each
-    placeholder below the block.
-6.  **Warnings before risk:** Put a warning before a destructive step, and state
-    the trigger condition and the data or service loss.
+    next step, following the copyable-command rules in `writing-tech-docs` and
+    placing hazard warnings before destructive steps (R20).
 
-Identify controls by their visible label or heading, not by position words such
-as "above" or "on the right".
-
-Test installation, migration, and recovery steps on a clean state. A pass on an
-already configured developer machine has the status "assumed", not "measured".
-Put the status in the report, not in the page.
+Test installation, migration, and recovery procedures on a clean environment. A
+pass only on an already configured developer workstation has status `assumed` in
+the report.
 
 ## Reference, troubleshooting, and runbooks
 
-Organize application, library, and command-line reference pages around the
-public interface or "--help" hierarchy, not around internal source files. Derive
-names, types, required inputs, mutually exclusive flags, defaults, side effects,
-and errors from the code, schema, or parser. Do not expose private internals as
-part of the public contract.
+Organize API, library, and CLI reference pages around the public interface or
+`--help` hierarchy rather than internal source files. Derive names, types,
+required inputs, mutually exclusive flags, defaults, side effects, and errors
+from the code or schema without exposing private internals as contract.
 
-Organize troubleshooting pages by observable symptoms and exact error messages.
-List safe diagnostic checks before destructive recovery steps, and do not list
-guesses as causes.
+Organize troubleshooting pages by observable symptoms and exact error messages,
+listing safe diagnostic checks before destructive recovery steps and omitting
+unverified guesses.
 
-In an operations runbook, separate routine maintenance from emergency response.
-State the stop condition that halts the procedure, the owner to contact if
-rollback fails, and the record that the operator must leave.
+In operations runbooks, separate routine maintenance from emergency response.
+State the halt condition, the escalation contact if rollback fails, and the
+operational log entry to record.

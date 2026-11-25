@@ -1,72 +1,67 @@
 ---
 name: tech-docs-diagrams
 description: >-
-  Decides when a technical diagram earns its space and creates, revises, or
-  reviews source-backed diagrams (Mermaid and Graphviz DOT) in Markdown and
-  Google Docs. Enforces cognitive-load limits, short ID-free labels with keyed
-  details below, compact multiplicity, structured sub-elements, optional flat
-  icons, and red-green-safe semantic color with non-color cues. Use when
-  deciding whether to add a diagram, authoring or reviewing architecture,
-  topology, state, or sequence diagrams in technical documents, or configuring
-  editable diagrams in Google Docs. Don't use for numeric data charts or
-  slide-only marketing visuals.
-last_updated: 2026-11-20
+  Decides when a technical diagram earns its space and creates, revises,
+  reviews, or triages source-backed diagrams (Mermaid and Graphviz DOT) in
+  Markdown and Google Docs. Use when deciding whether to add a diagram,
+  authoring, reviewing, or triaging comments on architecture, topology, state,
+  or sequence diagrams in technical documents, or configuring editable diagrams
+  in Google Docs. Don't use for numeric data charts or slide-only marketing
+  visuals.
+last_updated: 2026-11-24
 ---
 
 # Diagrams from source code for technical documents
 
 Optimize every diagram for human review, sound decisions, and low-effort updates
-from text source. A diagram is a structured projection of a system model, not
-decoration. Draw a diagram only when 2D spatial layout costs the reader less
-effort than prose, a list, or a table. Keep the diagram source code synced with
-the document.
+from text source. Draw a diagram only when 2D layout beats prose, a list, or a
+table, and keep its source code synced with the document.
 
-Each rule below has a stable ID (D1 to D10). In `{skill_dir}`, the bundled lint
-script checks measurable limits in Markdown, Mermaid, and Graphviz DOT files.
-Apply the `writing-tech-docs` skill to all prose, lists, tables, and subsections
-around a diagram.
+Each rule below has a stable ID (D1 to D11). In `{skill_dir}`, `diagram_lint.py`
+checks measurable limits in Markdown, Mermaid, and Graphviz DOT files. Apply
+`writing-tech-docs` to surrounding prose, lists, tables, and subsections, and
+`tech-docs-comments` when posting or triaging inline review comments.
 
 ## Workflow
 
-Table 1 selects the steps for writing, revising, or reviewing diagrams.
+Table 1 selects the steps for writing, revising, reviewing, or triaging
+diagrams.
 
-Mode   | When                                      | Steps   | You deliver
------- | ----------------------------------------- | ------- | -----------
-Write  | Drafting a new document or adding graphs. | 1 to 6  | Source-backed diagrams, keyed text, lint check.
-Revise | Revising an existing draft or diagrams.   | 1 to 6  | Restructured diagrams, container fixes, summary.
-Review | Auditing diagrams without modifying text. | 1 and 6 | Comments on key findings (D1 to D10).
+Mode   | When                                                | Steps   | You deliver
+------ | --------------------------------------------------- | ------- | -----------
+Write  | Drafting a new document or adding diagrams.         | 1 to 6  | Source-backed diagrams, keyed text, lint check.
+Revise | Updating diagrams in an existing draft.             | 1 to 6  | Updated diagrams in place and a change summary.
+Review | Auditing diagrams without modifying files.          | 1 and 6 | Comments on key findings (D1 to D11).
+Triage | Addressing others' comments on diagrams in a draft. | 1 to 6  | Updated diagram source/images and thread replies.
 
-*Table 1: Review mode reports key diagram defects without editing the file.*
+*Table 1: Review mode reports key diagram defects, while Triage mode updates
+source-backed diagrams and replies per `tech-docs-comments`.*
 
-Apply all rules (D1 to D10) and fix all findings when creating or revising a
-document, or on diagrams touched during a narrow edit. On an existing document,
-audit the visual structure of the whole draft instead of patching existing
-diagrams alone. Replace unbacked pictures or ASCII art (D1), turn non-spatial
-diagrams into lists or tables, and add diagrams where prose hides topology (D2).
-Split mixed-zoom or crowded graphs into overview and child diagrams (D3, D4).
+Apply all rules (D1 to D11) and fix all findings in Write, Revise, and Triage.
+On new documents or requested restructuring, audit the visual structure of the
+whole draft. Replace unbacked pictures or ASCII art (D1), swap non-spatial
+diagrams for lists or tables, and add diagrams where prose hides topology (D2).
+Split crowded or mixed-zoom graphs into overview and child diagrams (D3, D4,
+D11).
 
-When commenting on another author's document, inspect all checks and report key
-defects in visual fit, missing diagrams, boundaries, zoom, capacity, or roles.
-Skip minor styling or label-length nits unless the user asks for a full audit.
+Without a restructuring request on an existing draft, apply D1 to D11 to added
+or revised diagrams in place and note broader gaps. In Review mode on another
+author's doc, report only key defects in visual fit, boundaries, zoom, capacity,
+or roles, skipping minor nits.
 
-1.  **Test spatial value:** Check Table 2 (D2). If a list or table conveys the
-    facts with less reader effort than a 2D graph, omit or replace the diagram.
-    On an existing draft, also check prose for buried topology or multi-actor
-    flows that need a diagram.
-2.  **Pick zoom and orientation:** Choose one abstraction level, one arrow
-    meaning, and top-down flow (D3). Above 9 boxes or 12 arrows, plan one
-    overview diagram and child diagrams (D4).
-3.  **Write portable diagram code:** Draft plain `mermaid` or `dot` source (D1).
-    Use 1-to-3-word ID-free labels (D5), compact `0..N` multiplicity (D7), and
-    nested sub-boxes or vertical sub-lists (D8).
-4.  **Encode categories cleanly:** Group roles or trust zones with shapes, 3 to
-    5 red-green-safe pastel colors, and non-color cues (D10). Add flat icons
-    only if shapes and colors leave roles ambiguous (D9).
-5.  **Frame and key the details:** Add a lead-in sentence above and a 1-line
-    italicized conclusion caption below (D6). Add a 1-line legend if styles
-    vary, and put details past 5 words in a keyed block below.
-6.  **Lint and publish:** Run `diagram_lint.py` and verify the 5 manual checks.
-    Embed fenced code in Markdown or source-backed images in Google Docs (see
+1.  **Test spatial value and caption:** Check Table 2 (D2) and draft the 1-line
+    takeaway caption first (D6), or use a list or table instead.
+2.  **Pick zoom, spine, and splits:** Choose one zoom level and a top-down spine
+    (D3), splitting large graphs into one parent overview and child diagrams
+    (D4, D11).
+3.  **Write portable diagram source:** Author plain `mermaid` or `dot` source
+    following D1, D5, D7, and D8.
+4.  **Encode categories:** Group roles with shapes, red-green-safe fills beside
+    neutral context nodes, redundant cues, and optional flat icons (D9, D10).
+5.  **Frame and key details:** Add the lead-in above, caption directly below,
+    1-line legend if styles vary, and keyed contracts below (D6).
+6.  **Lint and publish:** Run `diagram_lint.py`, verify the 5 manual checks, and
+    embed fenced source or opaque-white Docs images (see
     [patterns and Google Docs setup](references/patterns_and_gdocs.md)).
 
 ## When to draw or skip a diagram
@@ -89,142 +84,136 @@ text.*
 
 ## Rules
 
-### Source and scope
+### Source, layout, and decomposition
 
--   **D1. Diagram from source code:** Author every diagram in text source. Use
-    plain Mermaid (`flowchart` or `sequenceDiagram`) by default. Use
-    `stateDiagram-v2` for state machines, or Graphviz DOT (`digraph`) when rank
-    or edge weights need tight control. Never insert an unbacked screenshot or
-    ASCII box art. Keep fenced blocks inline in Markdown, and sync or store
-    source in Alt text in Google Docs (see
-    [patterns and Google Docs setup](references/patterns_and_gdocs.md)).
--   **D2. Spatial value test:** Include a diagram only when 2D position,
-    containment, branching, cycles, or lifelines replace sequential text search
-    (Table 2). Replace linear chains and non-spatial taxonomies with lists or
-    tables.
--   **D3. One zoom level and top-down flow:** Show one abstraction level per
-    diagram, such as system context, containers, or internal modules. Never mix
-    levels or edge meanings in one diagram. Use top-to-bottom (`TD` or `TB`)
-    flow with at most 3 sibling boxes per rank so diagrams fit portrait pages
-    (under 468 pt). Use horizontal `LR` flow only for unbranched chains of 3 or
-    4 boxes.
--   **D4. Element, arrow, and crossing limits:** Cap each diagram at 5 to 9
-    primary boxes (`<= 5` lifelines in a sequence diagram) and at most 12
-    arrows. Keep edge crossings at zero or near zero. Start each arrow at the
-    actor that starts the action. Above 9 boxes or 12 arrows, put one parent
-    overview diagram in the parent section and child stage diagrams in nested
-    subsections.
+-   **D1. Diagram from source code:** Author every diagram in text source.
+    Default to plain Mermaid (`flowchart` or `sequenceDiagram`). Cap
+    `sequenceDiagram` control blocks (alt, opt, loop, par) at 1 nesting level,
+    and draw activation bars on overlapping async calls. Use `stateDiagram-v2`
+    for state machines (at most 1 composite superstate level for shared error or
+    timeout exits), or Graphviz DOT (`digraph`) for rank control. Never insert
+    unbacked screenshots or ASCII box art. Export images on an opaque white
+    background for dark-mode readers.
+-   **D2. Spatial value test:** Draw a diagram only when Table 2 selects one,
+    using Lists or Tables for linear chains, 2-node pairs, and comparisons.
+-   **D3. One zoom level and spine-aligned flow:** Show one abstraction level
+    and one edge meaning per diagram. Default to top-to-bottom (`TD` or `TB`)
+    flow with at most 3 sibling boxes per rank. Declare normal-case nodes first
+    so the main path runs straight down the central spine. Route fallback
+    branches sideways, and use upward back-edges only for dashed (`-.->`)
+    retries or error replies. Allow horizontal `LR` flow only for branched
+    pipelines of at most 3 ranks (`<= 2` boxes per rank) under 468 pt wide.
+-   **D4. Element, degree, direction, and crossing limits:** Size each diagram
+    at 3 to 9 boxes (`3` to `5` sequence lifelines) and at most 12 arrows. Cap
+    single-node fan-out and fan-in at 4 arrows. Start each arrow at the
+    initiating actor. Never use bidirectional (`<-->`) or undirected (`---`)
+    edges in directed flows (draw 1 initiator arrow or 2 request and reply
+    arrows). Keep edge crossings at zero, or cross at 70 to 90 degrees when 1 or
+    2 crossings remain unavoidable. Above 9 boxes or 12 arrows, split into one
+    parent overview and child stage diagrams (D11).
+-   **D11. Parent-to-child integration and state-pair contrast:** Preserve each
+    parent box title, fill, and `[TAG]` prefix in its child heading or
+    `subgraph`. Draw callers or targets crossing that perimeter as neutral
+    boundary stubs in the child diagram so boundary arrows match 1 to 1. In
+    "current" against "proposed" pairs, freeze unchanged nodes in muted gray and
+    color only changed components and edges.
 
 ### Labels, multiplicity, and sub-elements
 
 -   **D5. Short, ID-free canvas labels:** Label each box with a concrete noun
     phrase of 1 to 3 words (limit 5 words). Label each arrow with a verb and
-    noun or payload of 1 to 3 words (limit 5 words). Avoid vague 1-word arrow
-    labels such as "Data" or "Request". Short step numbers on ordered arrows
-    (`1. Sign challenge`, `2. Verify key`) are permitted to index details below.
-    Never put alphanumeric IDs (`REQ-04` or `INV-02`), function signatures, or
-    sentences inside boxes or arrows.
--   **D6. Framed diagram and keyed details below:** Introduce every diagram with
-    a complete sentence stating what projection it shows. Place a 1-line
-    italicized conclusion caption directly below the diagram, and explain labels
-    in body text for machine translation. Add a 1-line legend if arrow, border,
-    or color styles vary. When boxes or arrows carry contracts beyond 5 words,
-    place a keyed list, table, or subsection block below per
-    `writing-tech-docs`. Omit that block if surrounding prose already states
-    every fact.
+    noun or concrete payload of 1 to 3 words (limit 5 words). Never use vague
+    1-word noun labels such as "Data", "Request", "Response", or "Payload", or
+    bare step numbers without words. Short numbered verb phrases on ordered
+    arrows (`1. Sign challenge`) are permitted to index details below. Never put
+    alphanumeric IDs (`REQ-04` or `INV-02`), function signatures, or sentences
+    on the canvas.
+-   **D6. Framed diagram and keyed details below:** Draft the 1-line italicized
+    takeaway caption first to bound the diagram (`<= 5` key relationships), and
+    place it directly below the figure. Introduce the diagram above with a
+    complete sentence stating what projection it shows, and add a 1-line legend
+    if arrow, border, or color styles vary. Google Docs stores diagram code in
+    image Alt text, so state all relationships in the prose, caption, and keyed
+    block for screen readers. Format keyed details past 5 words as a list,
+    table, or subsections per `writing-tech-docs`, omitting facts already clear
+    on the canvas.
 -   **D7. Compact multiplicity without duplicate boxes:** Show when 0 to many
-    instances of an element exist without drawing 3 or more identical parallel
-    boxes. Mark multiplicity in the box title ("Workers (1..N)"), or use a
-    multi-instance shape (`[["Workers (1..N)"]]` in Mermaid, `box3d` in DOT).
-    Draw "Worker 1", `...`, and "Worker N" only when arrows route differently to
-    specific instances.
--   **D8. Sub-elements inside a container box:** Never write comma-separated
-    inline lists of sub-elements inside a box. If sub-elements have distinct
-    arrows, draw them as separate nested sub-boxes (`subgraph` in Mermaid or
-    `cluster_` in DOT). If sub-elements share all arrows of the parent box, list
-    2 to 5 short titles vertically inside the box. Keep each title to 1 to 3
-    words (limit 5). Join lines with `<br/>` and prefix items with "• " or `1. `
-    in Mermaid. Above 5 sub-elements, split into a child diagram.
+    instances exist without drawing 3 or more identical parallel boxes. Mark
+    multiplicity in the box title ("Workers (1..N)"), or use a multi-instance
+    shape (`[["Workers (1..N)"]]` in Mermaid, `box3d` in DOT). Draw "Worker 1",
+    `...`, and "Worker N" only when arrows route differently to specific
+    instances.
+-   **D8. Sub-elements and container depth:** Never write comma-separated inline
+    lists inside a box. If sub-elements have distinct arrows, draw nested
+    sub-boxes (`subgraph` in Mermaid or `cluster_` in DOT, capped at 2 nesting
+    levels). When sub-elements share all parent arrows, stack 2 to 5 short
+    titles with `<br/>` and "• " or `1. ` prefixes. Above 5 sub-elements, split
+    into a child diagram.
 
 ### Icons and color
 
--   **D9. Flat category icons:** Express element roles with built-in shapes
-    (cylinders, stadiums, hexagons) and semantic color first (D10). Add flat,
-    single-hue silhouette icons only when shapes and colors leave roles hard to
-    separate. Cap a diagram at 5 icon categories, and always pair every icon
-    with a text label. Omit `@{ icon: ... }` syntax and Unicode emoji from
-    inline Markdown Mermaid blocks. That syntax fails in GitHub, GitLab, and
-    many Markdown and CLI renderers.
--   **D10. Red-green-safe color and non-color cues:** Use 3 to 5 semantic pastel
-    fills (plus neutral white or gray) to group trust levels, execution rings,
-    or roles. Pick hues distinguishable under common red-green colorblindness
-    (deuteranopia and protanopia, without filtering for rare tritanopia). Use
-    teal-green (`#E0F2F1`) for trusted items and vermilion-red (`#FCE8E6`) for
-    untrusted or error items. Use blue (`#E8F0FE`) or amber (`#FEF7E0`) for
-    execution tiers. Use purple (`#F3E8FD`) for hardware or keys, always with
-    dark `#202124` text (see the reference palette). Pair each color with a
-    non-color cue, starting with an enclosing `subgraph` or a solid against
-    dashed border. When categories interleave, add a distinct shape or a short
-    `[HW]` or `[K]` prefix (or an icon per D9). State full category facts in the
-    legend and keyed text below so color is never required.
+-   **D9. Flat category icons and graphic economy:** Express roles with shapes
+    and semantic color first (D10). Cap distinct symbol classes across shapes,
+    fills, and borders at 6 per diagram. Add flat, single-hue icons only when
+    shapes and colors leave roles unclear (at most 5 icon categories, always
+    labeled). Omit `@{ icon: ... }` syntax and Unicode emoji from inline
+    Markdown Mermaid blocks, where GitHub, GitLab, and common Markdown renderers
+    fail.
+-   **D10. Red-green-safe color and redundant cues:** On multi-role flowcharts
+    and graphs, use 1 to 4 semantic pastel fills (limit 5) beside neutral white
+    or gray (`#F8F9FA`) context nodes. Zero fills are permitted when roles do
+    not vary or in sequence and state diagrams. Never assign every box its own
+    unique singleton color. Pick deuteranopia- and protanopia-safe fills with
+    `#202124` text at `>= 4.5:1` contrast (see palette hexes in
+    [patterns and Google Docs setup](references/patterns_and_gdocs.md)). Pair
+    each color with a non-color cue encoding the **same** category redundantly.
+    Prefer an enclosing `subgraph` first, border style or shape second, or a
+    `[HW]` prefix (or icon per D9) when categories interleave. State full
+    category facts in the legend and keyed text below.
 
 ## Markdown and Google Docs delivery
 
-Table 3 summarizes how to keep diagrams editable from source in Markdown and in
-Google Docs. Full rendering commands, Alt-text steps, and palettes live in
-[patterns and Google Docs setup](references/patterns_and_gdocs.md).
+Table 3 summarizes source-backed delivery in Markdown and Google Docs (see
+[patterns and Google Docs setup](references/patterns_and_gdocs.md) for CLI
+commands and palettes).
 
 Surface                         | Authoring and sync path                                        | Source storage
 ------------------------------- | -------------------------------------------------------------- | --------------
 Markdown (GitHub, GitLab, docs) | Inline fenced `mermaid` or `dot` block in the `.md` file.      | `.md` file in VCS
-Google Docs (CLI render)        | Render PNG with `mmdc` or `dot`, insert image, store Alt text. | VCS and Alt text
-Google Docs (manual update)     | Copy source from Alt text, edit, re-render, and replace image. | Image Alt text
+Google Docs (CLI or sync)       | Render PNG with `mmdc` or `dot`, insert image, set Alt text.   | VCS and Alt text
+Google Docs (in-place update)   | Copy source from Alt text, edit, re-render, and replace image. | Image Alt text
 
-*Table 3: Never insert static diagram pictures without storing editable diagram
-source.*
+*Table 3: Never use cloud diagram add-ons on private docs or insert static
+pictures without editable diagram source.*
 
 ## Check before review
 
 ### Automated diagram lint
 
-Run the bundled linter on Markdown, `.mmd`, or `.dot` files:
+Run the bundled linter on Markdown or diagram source files. Wrap intentional
+counterexamples between `<!-- diagram-lint: off -->` and
+`<!-- diagram-lint: on -->`:
 
 ```bash
 python3 {skill_dir}/scripts/diagram_lint.py draft.md
 python3 {skill_dir}/scripts/diagram_lint.py diagram.mmd
 ```
 
-The script checks ASCII box art and raster diagram images in Markdown (D1),
-branched or wide `LR` flows (D3), and node or arrow counts (D4). It also checks
-label length and alphanumeric IDs (D5), plus comma-separated or excess sub-items
-and `- ` bullets (D8). In addition, it flags inline `@{ icon: ... }` or emoji
-(D9) and checks palette limits and red-green pairs (D10). Wrap intentional
-counterexamples between `<!-- diagram-lint: off -->` and
-`<!-- diagram-lint: on -->`.
-
 ### Manual checks
 
-Verify these 5 points after running `diagram_lint.py`:
+Verify these 5 semantic checks after running `diagram_lint.py`:
 
-1.  **Spatial value check (D2):** Confirm that each diagram shows boundaries,
-    branching, cycles, or multi-actor timing rather than a linear list or
-    attribute table. On an existing draft, confirm that you replaced non-spatial
-    diagrams and added diagrams where prose hid 2D structure.
-2.  **Crossing and zoom check (D3, D4):** Confirm one abstraction level, one
-    arrow meaning, actor-started arrows, and zero avoidable crossings (splitting
-    into overview and child diagrams if crowded).
-3.  **Self-contained labels and keyed text (D5, D6):** Verify that boxes and
-    arrows read without consulting prose, while extra contracts live in a keyed
-    block below without repetition.
-4.  **Multiplicity and container check (D7, D8):** Confirm no repeated parallel
-    boxes for `0..N` instances, and confirm nested sub-boxes whenever inner
-    sub-elements own distinct arrows.
-5.  **Colorblind and text-only check (D9, D10):** Hide colors mentally and
-    verify that boundaries, borders, shapes, `[TAG]` prefixes, legend, and keyed
-    text preserve every category distinction.
-
-## References
-
--   Read [patterns and Google Docs setup](references/patterns_and_gdocs.md) for
-    local rendering commands, Google Docs Alt-text storage, Mermaid and DOT
-    palettes, and worked examples.
+1.  **Spatial value (D2):** The diagram shows boundaries, branching, cycles, or
+    multi-actor timing rather than a linear list or attribute table.
+2.  **Spine and integration (D3, D4, D11):** One zoom level, one arrow meaning,
+    a straight normal-case spine, zero avoidable crossings, and matching titles
+    and boundary stubs across parent and child diagrams.
+3.  **Self-contained labels and accessible text (D5, D6):** Canvas labels read
+    without prose, while prose, caption, and keyed details state every
+    relationship without repeating obvious canvas facts.
+4.  **Multiplicity and containers (D7, D8):** `0..N` pools avoid repeated
+    parallel boxes, and inner sub-elements with distinct arrows use nested
+    sub-boxes.
+5.  **Redundant coding (D9, D10):** Hiding colors mentally leaves every category
+    distinguishable via `<= 6` symbol classes, boundaries, borders, shapes,
+    `[TAG]` prefixes, legend, and keyed text.

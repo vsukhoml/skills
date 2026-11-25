@@ -1,13 +1,12 @@
 # Examples before and after the rules
 
-Each example shows a text before the rules in a code block, and the same text
-after the rules. An example that contains an open item shows the text after the
-rules in a code block also. All numbers and names in the examples are invented.
+Each section below shows a draft snippet before and after applying the rules in
+`writing-tech-docs`.
 
 ## Opening summary
 
-This example applies 4 rules: answer first (R2), problem without the solution
-(R7), one claim in each sentence (R13), and numbers, not praise (R16).
+Applies answer first (R2), problem without the solution (R7), one claim per
+sentence (R13), and numbers, not praise (R16):
 
 ```text
 Over the last few quarters we have been looking into ways to improve the
@@ -17,7 +16,8 @@ with a lightweight delta update mechanism that should significantly reduce
 update times while being robust against power loss.
 ```
 
-After the rules, the summary states the problem, the mechanism, and the cost:
+After the rules, the summary states the problem, mechanism, and cost (using "not
+measured" whenever the author lacks a measurement):
 
 A firmware update over the serial link takes 190 s, and 3% of updates fail after
 a power loss (measured, release 4.1, 12 000 devices). We propose to send only
@@ -26,13 +26,10 @@ code changes the active slot only after the signature check passes. The
 estimated update time is 25 s (calculated from page counts, not measured). The
 cost is 6 KiB of code and one flash page for the page map.
 
-The first text gives no number, so the author supplied each number. If the
-author has no number, write "not measured".
-
 ## Conditions
 
-This example applies 2 rules: tables for conditions and comparisons (R10), and
-a frame for each block (R12).
+Applies tables for conditions (R10), block frames (R12), and front-loaded
+conditions (R27):
 
 ```text
 If the device is locked and the request comes over USB, the command is
@@ -41,22 +38,21 @@ owner has enabled it; when the device is unlocked, both transports are
 accepted, except that USB requests are rate limited.
 ```
 
-After the rules, Table 1 gives the result for each state and each transport.
+After the rules, Table 1 gives the result for each state and transport.
 
 Device state | Transport    | Result
 ------------ | ------------ | ------
 Locked       | USB          | The device rejects the command.
-Locked       | Internal bus | The device accepts the command if the owner enabled it.
+Locked       | Internal bus | If the owner enabled the bus, the device accepts the command.
 Unlocked     | USB          | The device accepts the command and limits the rate.
 Unlocked     | Internal bus | The device accepts the command.
 
-*Table 1: A locked device does not accept a command from USB.*
+*Table 1: A locked device rejects every USB command.*
 
 ## Key-description table
 
-This example applies the rules for tables, lists, and section size (R1, R9, and
-R10). The draft puts a short ID, an item title, and a 2-sentence explanation in
-a 3-column table.
+Applies section density, lists, and table rules (R1, R9, R10) to a 3-column
+table of short IDs, names, and 2-sentence explanations:
 
 ```text
 | ID | Component    | Role                                             |
@@ -66,24 +62,21 @@ a 3-column table.
 | C3 | Audit log    | Writes rejected codes to a 256-entry ring log.   |
 ```
 
-Each explanation has only 2 sentences, so separate sections leave too little
-body text below each heading. A bulleted list highlights each ID and title in
-bold instead:
+Because each item needs only 2 sentences, a bold-lead-in list beats a table or
+stub subsections. Use child headings only when most items need at least a
+paragraph:
 
 -   **C1. Frame parser:** Checks the length and checksum of each incoming
     packet. Drops any frame that fails a check and increments the error counter.
--   **C2. Key cache:** Holds the active session key in SRAM. Clears the key slot
-    if the host closes the session or resets the bus.
+-   **C2. Key cache:** Holds the active session key in SRAM. If the host closes
+    the session or resets the bus, the cache clears the key slot.
 -   **C3. Audit log:** Appends each rejected command code to the flash ring
     buffer. Keeps the latest 256 entries across power cycles.
 
-If most items need a full paragraph or more, turn each ID and title into a child
-heading instead.
-
 ## Sentences
 
-This example applies the rules for sentences (R13, R14, and R15) and for
-literal language and complete grammar (R26 and R27).
+Applies sentence, active-voice, symbol-cap, and explicit-grammar rules (R13 to
+R15, R26, R27):
 
 ```text
 Validation of the incoming frame is performed by the parser, which handles
@@ -91,8 +84,8 @@ malformed input gracefully, and once it's done the result is surfaced to the
 caller via ERR_FRAME_LEN, ERR_FRAME_CRC or ERR_FRAME_SEQ, etc.
 ```
 
-After the rules, each sentence has one actor and one action. The marker asks for
-the meaning of the word "gracefully", because the first text does not state it.
+After the rules, each sentence names one actor and action, and an open marker
+asks what "gracefully" means:
 
 ```markdown
 The parser examines the length, the checksum, and the sequence number of each
@@ -104,15 +97,13 @@ frame. If one of them is wrong, the parser returns an error code to the caller
 
 ## Requirement
 
-This example applies 2 rules: named, enforced, tested claims (R22), and stated
-coverage and stated negatives (R23).
+Applies named, enforced, tested claims (R22) and stated coverage (R23):
 
 ```text
 The counter should never go backwards, even after crashes.
 ```
 
-After the rules, the requirement has a plain name, a mechanism, a test, and its
-coverage:
+After the rules, the invariant states its name, mechanism, test, and coverage:
 
 -   **INV-01. Counter order:** The attempt counter does not decrease after a
     restart or a power loss.
@@ -124,16 +115,10 @@ coverage:
     previous firmware. An upgrade has no effect, because the counter format does
     not change.
 
-The author supplied the mechanism, the test, and the coverage, and named the
-invariant `INV-01. Counter order` under the document convention. The next
-example shows how another section refers to `INV-01` without repeating its
-definition.
-
 ## DRY references
 
-This example applies the DRY rule for one home per item (R4). The rollback
-section repeats the full definition and enforcement of `INV-01` instead of
-pointing to it.
+Applies one home per item (R4) where a rollback section repeats `INV-01` in
+full:
 
 ```text
 ## Rollback
@@ -144,8 +129,8 @@ value to flash before returning. Because of this flash write, firmware 4.0
 reads the latest counter value without a migration step.
 ```
 
-After the rules, the rollback section refers to `INV-01 (Counter order)` without
-restating its definition, and states only the consequence for rollback:
+After the rules, the section points to `INV-01 (Counter order)` and states only
+its local rollback consequence:
 
 ```markdown
 ## Rollback
@@ -157,38 +142,29 @@ without a migration step.
 
 ## Missing facts
 
-This example applies the limits "No invented facts" and "No guessed meaning".
+Applies "No invented facts" and "No guessed meaning":
 
 ```text
 The counter should never go backwards, even after crashes. The overhead is
 minimal.
 ```
 
-After the rules, the words of the author stay, and each marker asks one
-question in a separate paragraph. The subject of "should" is a component, so
-the word stays. The text has no empty list for the mechanism, the test, or the
-coverage.
+Because a component is the subject of "should", the original wording stays and
+each missing fact gets one standalone marker:
 
 ```markdown
 The counter should never go backwards, even after crashes.
 
-[Open: Is this sentence a requirement? If it is, which mechanism enforces it,
-and which test verifies it?]
+[Open: Which mechanism enforces non-decreasing counter updates across crashes?]
 
 The overhead is minimal.
 
-[Open: How much time and how much flash does one counter update use?]
+[Open: How much time and flash does one counter update consume?]
 ```
-
-The lint script reports the words "should" and "minimal" as findings, and both
-markers as open items. These findings stay until the author answers. List them
-in the report.
 
 ## Alternatives
 
-This example applies the rule for factual, unbiased comparisons (R24). The draft
-exaggerates pros and cons and omits the cost categories that favor the other
-options.
+Applies factual, unbiased comparisons (R24) to a biased prose pitch:
 
 ```text
 Option A (page map in flash) is a clean, superior design that guarantees
@@ -196,12 +172,12 @@ resilient updates. Option B (page map in RAM) is prohibitive under power
 loss, and doing nothing is unacceptable.
 ```
 
-After the rules, Table 2 states all material categories as facts, including
-flash space and flash wear where Option B and "no change" win.
+After the rules, the section opens with the deciding criteria and states the
+disqualifiers after Table 2. All 3 options compare across 4 material attributes,
+including flash cost where Option B wins.
 
-The update must continue after a power loss (the deciding criterion), and the
-change must use at most 8 KiB of flash. Table 2 compares the 3 options across
-all 4 material criteria.
+The update must continue after a power loss, and the change must use at most 8
+KiB of flash. Table 2 compares the 3 options across all 4 material criteria.
 
 Option               | After a power loss                 | Flash space | Extra flash writes     | Work
 -------------------- | ---------------------------------- | ----------- | ---------------------- | ----
@@ -212,15 +188,13 @@ No change            | Fails on 3% of updates (measured). | 0 KiB       | 0 writ
 *Table 2: Only option A continues an update after a power loss, at a cost of 4
 KiB and 1 write per page.*
 
-Option B and the option "no change" do not meet the power-loss criterion. Option
-A meets both required limits, so the design stores the page map in flash.
+Option B and "No change" fail the power-loss requirement. Option A meets both
+required limits, so the design stores the page map in flash.
 
 ## Code block
 
-The example applies 4 rules: detail in its layer (R3), cut low-signal text (R6),
-block frames (R12), and one role for each style (R19). The draft places an
-untagged snippet with headers, boilerplate, and a wide trailing comment directly
-below a heading.
+Applies R3, R6, R12, and R19 to an untagged snippet with boilerplate and a wide
+trailing comment:
 
 ````text
 ## Replay check
@@ -239,9 +213,8 @@ int check_frame(struct ctx *c, const uint8_t *buf, size_t len) {
 ```
 ````
 
-After the rules, the lead-in states that the block defines the proposed
-contract. Imports and plumbing disappear, the comment sits above its field, and
-each line stays within 72 characters:
+After the rules, the lead-in frames the proposed contract, boilerplate
+disappears, and comments sit above fields within 72 characters:
 
 ```c
 // Proposed wire header at byte 0 of each signed command frame.
@@ -252,13 +225,12 @@ struct frame_header {
 };
 ```
 
-The prose outside the block states the replay rejection (`ERR_REPLAY`) and the
-flash write order before the command returns.
+Prose outside the block states replay rejection (`ERR_REPLAY`) and flash write
+ordering before return.
 
 ## Synthetic prose
 
-This example applies the 4 rules for grounded, non-synthetic prose (R29 to R32)
-to a paragraph with synthetic stagecraft and unverified claims.
+Applies R29 to R32 to synthetic stagecraft and unverified citations:
 
 ```text
 In this section, let us explore the ingestion gateway. Reliability is a
@@ -269,23 +241,23 @@ stability. Studies show that bursty clients cause cascading failures
 The key detail: a token bucket drops excess frames.
 ```
 
-After the rules, the portable filler, negative contrast, commentary clause, and
-tracking parameter disappear, and an open item marks the missing facts:
+After the rules, filler, negative contrast, commentary participles, and URL
+trackers disappear, and standalone markers ask one question each:
 
 ```markdown
 The ingestion gateway is the trust boundary for client frames. A token
 bucket in the gateway drops frames above the client rate limit (see the
 [overload study](https://example.org/overload)).
 
-[Open: What are the token rate, the burst size, and the primary citation
-for the overload study?]
+[Open: What token rate and burst size does the gateway enforce?]
+
+[Open: Which primary paper or incident report is the overload study?]
 ```
 
 ## Tracked open questions
 
-This example applies the rules for an open-questions section. It keeps tracked
-questions out of `[Open: question]` markers, marks open and closed items, adds
-trade-offs, and frames open choices as options.
+Applies the open-questions section rules without adding duplicate `[Open: ...]`
+markers:
 
 ```text
 ## Key storage
@@ -301,9 +273,8 @@ daemon fetches a fresh key from the provisioning service.
 | Key store | Kernel keyring or TPM? | Ask the security team. |
 ```
 
-After the rules, the body presents the kernel keyring as one option and points
-to the open question, without an `[Open: ...]` marker. Table 3 adds a status
-column and states the trade-offs from the system facts.
+After the rules, body prose frames the open choice as an option pointing to the
+table:
 
 ```markdown
 ## Key storage
@@ -313,7 +284,7 @@ kernel keyring (see Key store in Open questions). On reboot, the daemon
 fetches a new key from the provisioning service (see Rotation).
 ```
 
-Table 3 tracks both the settled rotation schedule and the open storage choice.
+Table 3 marks open against closed status and states factual trade-offs.
 
 Item      | Status | Question                | Trade-offs and decision notes
 --------- | ------ | ----------------------- | -----------------------------
@@ -324,9 +295,7 @@ Key store | Open   | Kernel keyring or TPM?  | Keyring adds 0 ms. TPM blocks roo
 
 ## Developer documentation
 
-This example applies the profile for developer documentation to a section of a
-README. The rules are answer first (R2), a frame for each block (R12), literal
-language (R26), and fixed meanings and formats (R28).
+Applies `--profile docs` (R2, R12, R26, R28) to a README quickstart:
 
 ```text
 ## Getting Started
@@ -341,8 +310,9 @@ $ logtail --token abc123 tail prod
 Note: we recommend using --json if you're piping the output somewhere.
 ```
 
-After the rules, the section states the result first. Each step gives the
-location, the action, and the expected output. The heading keeps its words.
+After the rules, the section states the first result upfront and orders each
+step as location, action, and expected output. Advice becomes a conditional
+instruction:
 
 ````markdown
 ## Getting started
@@ -371,18 +341,3 @@ Prerequisites: Python and `uv`.
 
 If another program reads the output, add `--json`.
 ````
-
-The author supplied the output of the installer. The rewrite has these 5
-differences from a decision document:
-
--   **Summary:** The summary states what the tool does and the first result. It
-    has no problem, no mechanism, and no cost.
--   **Commands:** The commands have no shell prompt. A placeholder in capital
-    letters replaces the token, and the text below the block defines it.
--   **Advice:** The sentence with "we recommend" becomes an instruction with its
-    condition.
--   **Status:** No claim has a status in parentheses. The report lists the
-    commands that nobody ran on a clean machine.
--   **Missing fact:** The draft does not give the versions of Python and `uv`.
-    The versions do not change the result of the procedure for most readers.
-    Therefore the gap is in the report, and the text has no marker.
